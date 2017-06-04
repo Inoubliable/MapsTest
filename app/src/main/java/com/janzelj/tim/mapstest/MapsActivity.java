@@ -40,7 +40,8 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
                 .findFragmentById(R.id.map);
         mapFragment.getMapAsync(this);
 
-        Toast.makeText(this, "Mitja Change", Toast.LENGTH_LONG).show();
+        //TODO(): zbrisat ker je sam commit TEST
+        Toast.makeText(this, "Mitja Change 2", Toast.LENGTH_LONG).show();
 
         locationManager = (LocationManager) getSystemService(Context.LOCATION_SERVICE);
 
