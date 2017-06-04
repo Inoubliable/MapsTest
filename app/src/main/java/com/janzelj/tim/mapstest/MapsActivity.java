@@ -232,13 +232,15 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
                     double tempLat = Double.parseDouble(innerArray.substring(innerArray.indexOf("lat")+5,innerArray.indexOf("lat")+7)); // najdem lat in za tem uzamem stevki in jih spremenim v double
                     double tempLng = Double.parseDouble(innerArray.substring(innerArray.indexOf("lng")+5,innerArray.indexOf("lng")+7)); // najdem lng in za tem uzamem stevki in jih spremenim v double
 
+
+
                     //v Maps dodam nov marker
                     mMap.addMarker(new MarkerOptions()
                             .position(new LatLng(tempLat, tempLng))
                             .title("Free Space")
                             .icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_RED)));
                     //Kamero pomaknem na ta marker
-                    mMap.moveCamera(CameraUpdateFactory.newLatLngZoom(new LatLng(tempLat, tempLng), 1500));
+                    mMap.moveCamera(CameraUpdateFactory.newLatLngZoom(new LatLng(tempLat, tempLng), 3));
 
                 }
 
