@@ -240,13 +240,14 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 
                     double tempLat = Double.parseDouble(myMap.get("lat")); // najdem lat in za tem uzamem stevki in jih spremenim v double
                     double tempLng = Double.parseDouble(myMap.get("lng")); // najdem lng in za tem uzamem stevki in jih spremenim v double
+                    String tempName = myMap.get("id");
 
 
 
                     //v Maps dodam nov marker
                     mMap.addMarker(new MarkerOptions()
                             .position(new LatLng(tempLat, tempLng))
-                            .title("Free Space")
+                            .title(tempName)
                             .icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_RED)));
                     //Kamero pomaknem na ta marker
                     mMap.moveCamera(CameraUpdateFactory.newLatLngZoom(new LatLng(tempLat, tempLng), 3));
