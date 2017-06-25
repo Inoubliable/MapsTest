@@ -29,3 +29,7 @@ dependencies {
     testCompile 'junit:junit:4.12'
     compile files('libs/gson-2.8.1.jar')
 }
+
+dependencies {
+    compile 'com.google.maps.android:android-maps-utils:0.4.4'
+}

@@ -24,6 +24,7 @@ import com.google.android.gms.maps.model.PolygonOptions;
 import com.google.android.gms.maps.model.PolylineOptions;
 import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
+import com.google.maps.android.clustering.ClusterManager;
 
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -56,6 +57,10 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
     ArrayList<ParkingMarker> markersList;//stores ParkingMarkers for updating the oppacity of markers
 
     Handler UI_HANDLER;//For thread events (setting a clocl trigerted fucntion for updating the oppacity of markers)
+
+
+    // Declare a variable for the cluster manager.
+    private ClusterManager<MyItem> mClusterManager;//test
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -277,19 +282,19 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
                     String tempName = myMap.get("id");
 
 
+                    MarkerOptions myMarkerOptions = new MarkerOptions().position(new LatLng(tempLat, tempLng))
+                                                        .title(tempName)
+                                                        .icon(BitmapDescriptorFactory.fromResource(R.mipmap.ic_launcher_round))
+                                                        .anchor(0.5f,0.5f);
 
                     //v Maps dodam nov marker in ga shranim v marker list
-                    markersList.add( new ParkingMarker( tempName, tempLat, tempLng,100f,10f,
-                                        mMap.addMarker(new MarkerOptions().position(new LatLng(tempLat, tempLng))
-                                                                        .title(tempName)
-                                                                        .icon(BitmapDescriptorFactory.fromResource(R.mipmap.ic_launcher_round))
-                                                                        .anchor(0.5f,0.5f))
-                                    )
-                    );
+                    markersList.add( new ParkingMarker( tempName, tempLat, tempLng,100f,10f,mMap.addMarker(myMarkerOptions)));
 
                     //TODO(): camera should be moved to user location not last marker
                     //Kamero pomaknem na ta marker
                     mMap.moveCamera(CameraUpdateFactory.newLatLngZoom(new LatLng(tempLat, tempLng), 3));
+
+                    setUpClusterer();
 
                 }
 
@@ -297,6 +302,50 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         }
 
 
+    }
+
+
+
+    private void setUpClusterer() {
+        // Position the map.
+        mMap.moveCamera(CameraUpdateFactory.newLatLngZoom(new LatLng(46.058291, 14.507687), 1));
+
+        // Initialize the manager with the context and the map.
+        // (Activity extends context, so we can pass 'this' in the constructor.)
+        mClusterManager = new ClusterManager<MyItem>(this, mMap);
+
+
+
+
+        // Point the map's listeners at the listeners implemented by the cluster
+        // manager.
+        mMap.setOnCameraIdleListener(mClusterManager);
+        mMap.setOnMarkerClickListener(mClusterManager);
+
+        // Add cluster items (markers) to the cluster manager.
+        addItems();
+    }
+
+    private void addItems() {
+
+        // Set some lat/lng coordinates to start with.
+        double lat = 46.058291;
+        double lng = 14.507687;
+
+        // Add ten cluster items in close proximity, for purposes of this example.
+        for (int i = 0; i < 10; i++) {
+            double offset = i / 9000d;
+            lat = lat + offset;
+            lng = lng + offset;
+            MyItem offsetItem = new MyItem(lat, lng);
+            mClusterManager.addItem(offsetItem);
+        }
+
+        for(ParkingMarker marker : markersList){
+            MyItem offsetItem = new MyItem(marker.lat, marker.lng);
+            mClusterManager.addItem(offsetItem);
+
+        }
     }
 
 
