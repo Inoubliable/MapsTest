@@ -1,5 +1,6 @@
 package com.janzelj.tim.mapstest;
 
+import com.google.android.gms.maps.model.Circle;
 import com.google.android.gms.maps.model.Marker;
 
 /**
@@ -13,20 +14,22 @@ import com.google.android.gms.maps.model.Marker;
  *
  */
 
-public class ParkingMarker {
+class ParkingMarker {
 
 
     private Marker marker; //Google Maps api class for drawing markers on maps
-    double lat;
-    double lng;
+    private double lat;
+    private double lng;
     private String id; //from the databse(to check the http return string for new parking spots)
     private float precision; //if user uses GPS to annouce a free spot, we give(upon clicking the marker) a range in witch the viehcle is parked(GPS is not 100% accurate)
     private float time; //then the spot was annouced free
     private float alpha; //to graphicali show how recent is the free parking spot
+    private Circle circle;
 
 
 
-    public ParkingMarker(String id, double lat, double lng, float time, float precision, Marker marker){
+
+    ParkingMarker(String id, double lat, double lng, float time, float precision, Marker marker){
         this.id = id;
         this.lat = lat;
         this.lng = lng;
@@ -39,11 +42,11 @@ public class ParkingMarker {
 
 
 
-    public void touch(){
+    void touch(){
 
     }
 
-    public void updateAlpha(){
+    void updateAlpha(){
         time += 1000; // potekla 1 sec
         alpha = calculateAlphaForTime(time); //recalculate the oppacitiy of the marker- correspongind to time
         marker.setAlpha(alpha); //set new oppacitiy
@@ -55,9 +58,44 @@ public class ParkingMarker {
     }
 
 
-    public String getID(){
+    String getID(){
         return id;
     }
 
+    Marker getMarker(){
+        return marker;
+    }
 
+
+    void showRange(){
+
+    }
+
+    float getPrecision(){
+        return precision;
+    }
+
+    double getLat(){
+        return lat;
+    }
+
+    double getLng(){
+        return lng;
+    }
+
+    void setCircle(Circle circle){
+        this.circle = circle;
+    }
+
+    Circle getCircle() {
+        return circle;
+    }
+
+    boolean isCircle(){
+        if(circle != null){
+            return true;
+        }else{
+            return false;
+        }
+    }
 }

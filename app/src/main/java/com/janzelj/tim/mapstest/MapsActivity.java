@@ -11,6 +11,7 @@ import android.os.Handler;
 import android.support.v4.app.FragmentActivity;
 import android.os.Bundle;
 import android.util.Log;
+import android.view.KeyEvent;
 import android.widget.Toast;
 
 import com.google.android.gms.maps.CameraUpdateFactory;
@@ -18,6 +19,8 @@ import com.google.android.gms.maps.GoogleMap;
 import com.google.android.gms.maps.OnMapReadyCallback;
 import com.google.android.gms.maps.SupportMapFragment;
 import com.google.android.gms.maps.model.BitmapDescriptorFactory;
+import com.google.android.gms.maps.model.Circle;
+import com.google.android.gms.maps.model.CircleOptions;
 import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.maps.model.Marker;
 import com.google.android.gms.maps.model.MarkerOptions;
@@ -29,23 +32,37 @@ import com.google.gson.reflect.TypeToken;
 import org.json.JSONArray;
 import org.json.JSONException;
 
+import java.io.BufferedInputStream;
 import java.io.BufferedReader;
+import java.io.BufferedWriter;
+import java.io.DataOutput;
+import java.io.DataOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.io.OutputStream;
+import java.io.OutputStreamWriter;
+import java.io.UnsupportedEncodingException;
 import java.lang.reflect.Type;
 import java.net.HttpURLConnection;
 import java.net.MalformedURLException;
+import java.net.ProtocolException;
 import java.net.URL;
+import java.net.URLEncoder;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Map;
 
+import javax.net.ssl.HttpsURLConnection;
+
 
 //TODO(): implement time(from servers) for markers (now set value)
 //TODO(): after certian time(10min) old markers shold be delited
+//TODO(): Block spamming of free parking spaces
+//TODO(): Corelate Circle diameter to Marker precision
+//TODO(): Timer event to check for new Parking places
 
-public class MapsActivity extends FragmentActivity implements OnMapReadyCallback, LocationListener {
+public class MapsActivity extends FragmentActivity implements OnMapReadyCallback, LocationListener{
 
 
 
@@ -62,6 +79,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 
 
     ArrayList<ParkingMarker> markersList;//stores ParkingMarkers for updating the oppacity of markers
+    ArrayList<Circle> circleList;//stores circles for displaying precision
 
     Handler UI_HANDLER;//For thread events (setting a clocl trigerted fucntion for updating the oppacity of markers)
 
@@ -87,6 +105,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 
 
         markersList = new ArrayList<>(); //sotres ParkingMarkers for updating the oppacity of markers
+        circleList = new ArrayList<>();
 
 
         //Code to get user location
@@ -102,7 +121,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 
 
         //Gets Json from server and adds markers on maps after
-        new JsonTask().execute("https://peaceful-taiga-88033.herokuapp.com/users");
+        new JsonTask().execute("https://peaceful-taiga-88033.herokuapp.com/users?lat="+String.valueOf(46.054515)+"&lng="+String.valueOf(14.504680)+"&r=500&");
 
 
         //For marker animation
@@ -144,50 +163,122 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 
 
     /*************************************GOOGLE MAPS FUNCTIONS(onMapReady, onLocationChanged)***************************************/
-    //TODO(): Remove old code from Tim
 
     @Override
     public void onMapReady(GoogleMap googleMap) {
         mMap = googleMap;
 
-        drawMyMarker();
-    }
-
-
-    //This is old code from Tim using ustom shapes as marker
-    private void drawMyMarker() {
         Toast.makeText(this, "Loading Free Parking Spaces", Toast.LENGTH_LONG).show();
 
-        mMap.addPolygon(new PolygonOptions()
-                .add(
-                        new LatLng(lat, lng),
-                        new LatLng(lat + 0.001, lng + 0.001),
-                        new LatLng(lat + 0.0015, lng),
-                        new LatLng(lat + 0.001, lng - 0.001),
-                        new LatLng(lat, lng)
-                )
-                .strokeWidth(2)
-                .fillColor(Color.GREEN));
 
-        mMap.addPolyline(new PolylineOptions()
-                .add(new LatLng(lat + 0.00045, lng))
-                .add(new LatLng(lat + 0.0011, lng))
-                .add(new LatLng(lat + 0.0008, lng - 0.0003))
-                .width(9)
-        );
 
-        mMap.moveCamera(CameraUpdateFactory.newLatLngZoom(new LatLng(lat, lng), 15));
+
+
+        //Function onMarker Click (show the precision of the marker placement)
+        mMap.setOnMarkerClickListener(new GoogleMap.OnMarkerClickListener() {
+            @Override
+            public boolean onMarkerClick(Marker marker) {
+
+                //Loop through all markers to see witch marker was clicked
+                for(ParkingMarker parkingMarker : markersList){
+                    //make action on cliced marker
+                    if(parkingMarker.getMarker().getId().compareTo(marker.getId()) == 0){
+                        //First check if marker already has active circle if not make one (if circles were added over each other they wouldn't be transperant)
+                        if(!parkingMarker.isCircle()) {
+
+                            CircleOptions circleOptions = new CircleOptions().center(new LatLng(parkingMarker.getLat(), parkingMarker.getLng()))
+                                    .radius(50)
+                                    .strokeColor(Color.GRAY)
+                                    .fillColor(0x7F00FF00);
+
+                            Circle tempCircle = mMap.addCircle(circleOptions);
+
+                            circleList.add(tempCircle); //adds to list for later deleting
+                            parkingMarker.setCircle(tempCircle); //add Circle to ParkingMarker (to later check "First check if marker already has active circle if not make one" on if)
+
+                            marker.showInfoWindow(); //shows the infoWindows so it can ve clicked to remove the marker/parking spot
+
+                            return false;
+                        }else{
+                            //if same marker is cliced again remove the circle and infoWinow
+                            parkingMarker.getCircle().remove(); //remove it from the map
+                            parkingMarker.setCircle(null); //set reference to null
+
+                            return true; // to hide the infoWindow
+                        }
+                    }
+                }
+
+
+
+                return false;
+            }
+        });
+
+
+        //if unmarked part of map is clicked hide the circle around the markers and the infowindows
+        mMap.setOnMapClickListener(new GoogleMap.OnMapClickListener() {
+            @Override
+            public void onMapClick(LatLng latLng) {
+                //remove all circles
+                for(Circle circle : circleList){
+                    circle.remove();
+                }
+                //remove all infoWindows
+                for(ParkingMarker parkingMarker : markersList){
+                    parkingMarker.getMarker().hideInfoWindow();
+                    parkingMarker.setCircle(null); //sience we removed the circle its reference must be set to null as well( so if marker is clicked again, the circle will be redrawn)
+                }
+            }
+        });
+
+        //On long click on the map, place marker on that place and pass parking spot to server
+        mMap.setOnMapLongClickListener(new GoogleMap.OnMapLongClickListener() {
+            @Override
+            public void onMapLongClick(LatLng latLng) {
+
+                //pass parking spot to server
+                new PostSpot(latLng.latitude, latLng.longitude).execute("");
+                //add the spot to the map
+                addParkingMarker("Mitja Test"+markersList.size(), latLng.latitude, latLng.longitude, 1f);
+            }
+        });
+
+        //If infoWinow above marker is clicked, delete this maerker/parking spot
+        mMap.setOnInfoWindowClickListener(new GoogleMap.OnInfoWindowClickListener() {
+            @Override
+            public void onInfoWindowClick(Marker marker) {
+
+                //cant delete marker mid for loop so i store it in here for deleting later
+                ParkingMarker parkingMarkerToRemove = null;
+                //Loop through all the marker to see witchs infowindow was clicked
+                for(ParkingMarker parkingMarker : markersList){
+                    //when marker whos window was clicked is found delete the maerker, circle, parking spot
+                    if(parkingMarker.getMarker().getId().compareTo(marker.getId()) == 0){
+
+                        marker.remove();
+                        parkingMarker.getCircle().remove();
+                        //TODO(): add function to remove free spot from database
+
+                        parkingMarkerToRemove = parkingMarker;//store the marker to delete it from the list later
+                    }
+
+                }
+                markersList.remove(parkingMarkerToRemove);
+            }
+        });
+
+        //TODO(): move camera to use location
+        mMap.moveCamera(CameraUpdateFactory.newLatLngZoom(new LatLng(46.054515, 14.504680), 15));
+
     }
+
+
 
     @Override
     public void onLocationChanged(Location location) {
 
-        mMap.clear();
 
-        lat = location.getLatitude();
-        lng = location.getLongitude();
-
-        drawMyMarker();
 
     }
 
@@ -205,6 +296,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
     public void onProviderDisabled(String provider) {
 
     }
+
 
 
     /*********************************************************END***********************************************************/
@@ -236,6 +328,8 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
             UI_HANDLER.postDelayed(UI_UPDTAE_RUNNABLE, 1000);
         }
     };
+
+
 
     /*********************************************************END***************************************************/
 
@@ -278,8 +372,6 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 
                 while ((line = reader.readLine()) != null) {
                     buffer.append(line+"\n");
-                    Log.d("Response: ", "> " + line);   //here u ll get whole response...... :-)
-
                 }
 
                 return buffer.toString();
@@ -315,62 +407,30 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 
             try {
                 JSONArray tempArray = new JSONArray(result);//Paharsa string Json v Json array
-                Log.d("JSON arraqy : ",tempArray.toString());
 
                 for(int i=0; i<tempArray.length();i+=1){
 
-                    Log.d(i+"",tempArray.getString(i));
 
                     String innerArray = tempArray.getString(i);//ker je Json sestavljen iz arrayey morm dobit usak array posevi kot string
 
                     Type type = new TypeToken<Map<String, String>>(){}.getType(); //DA lagko pol v Map podam keksn tip je ker item
                     Map<String, String> myMap = gson.fromJson(innerArray, type); //Key-Value map k lagk pol vn uzamem lat, lng, time
 
-                    Log.d("Map"+i,myMap.toString());
 
                     double tempLat = Double.parseDouble(myMap.get("lat")); // najdem lat in za tem uzamem stevki in jih spremenim v double
                     double tempLng = Double.parseDouble(myMap.get("lng")); // najdem lng in za tem uzamem stevki in jih spremenim v double
                     String tempName = myMap.get("id");
 
-                    //options serve as propreties of marker(position, icon, name...)
-                    MarkerOptions myMarkerOptions = new MarkerOptions().position(new LatLng(tempLat, tempLng))
-                                                        .title(tempName)
-                                                        .icon(BitmapDescriptorFactory.fromResource(R.mipmap.ic_launcher_round))
-                                                        .anchor(0.5f,0.5f);
-
-                    //v Maps dodam nov marker in ga shranim v marker list
-                    markersList.add( new ParkingMarker( tempName, tempLat, tempLng,100f,10f,mMap.addMarker(myMarkerOptions)));
+                    addParkingMarker(tempName, tempLat, tempLng, 1f);
 
                 }
-
-
-
-
-
-
-                //TODO(DELETE): just a test
-                //added 1000 markers to see preformance
-                MarkerOptions myMarkerOptions = new MarkerOptions().position(new LatLng(1, 1))
-                        .title("")
-                        .icon(BitmapDescriptorFactory.fromResource(R.mipmap.ic_launcher_round))
-                        .anchor(0.5f,0.5f);
-
-                for(int k=0;k<1000;k++){
-                    myMarkerOptions.position(new LatLng(1+k*0.1, 3f));
-                    markersList.add( new ParkingMarker( "", 1+k*0.1, 3f,100f,10f,mMap.addMarker(myMarkerOptions)));
-                }
-
-
-
-
-
 
                 //TODO():Implement user location
                 //moves camera to User Location
-                mMap.moveCamera(CameraUpdateFactory.newLatLngZoom(new LatLng(1, 1), 3));
+                mMap.moveCamera(CameraUpdateFactory.newLatLngZoom(new LatLng(46.054515, 14.504680), 15));
 
 
-            } catch (JSONException e) {e.printStackTrace();}
+            } catch (JSONException | NullPointerException e) {e.printStackTrace();}
         }
 
 
@@ -380,6 +440,142 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 
 
 
+
+
+    /****************************************************POST DATA TO SERVER**********************************************************/
+
+    public class PostSpot extends AsyncTask<String, String, String> {
+
+        String latitute, longitute;
+
+        public PostSpot(double latitute, double longitute){
+
+
+            this.latitute = String.valueOf(latitute);
+            this.longitute = String.valueOf(longitute);
+        }
+
+        @Override
+        protected void onPreExecute() {
+            super.onPreExecute();
+        }
+
+
+        @Override
+        protected String doInBackground(String... params) {
+
+            String resultToDisplay = "";
+
+
+            resultToDisplay = addNewParkingSpot(latitute, longitute);
+
+            return resultToDisplay;
+
+
+
+        }
+
+
+        @Override
+        protected void onPostExecute(String result) {
+            Log.d("Post Request:", result);
+
+            if(result != "Mitja error"){
+
+            }
+        }
+
+    }
+
+
+
+    //TODO(): get the new ID an return it out
+    private String addNewParkingSpot(String latitute, String longitute){
+
+        String result = "Mitja error";
+
+        try {
+
+            URL url = new URL("https://peaceful-taiga-88033.herokuapp.com/login");
+
+
+            HttpURLConnection connection = (HttpURLConnection)url.openConnection();
+
+            String urlParameter = "lat="+latitute+"&lng="+longitute+"&";
+
+            connection.setRequestMethod("POST");
+
+            connection.setDoOutput(true);
+
+            DataOutputStream dStream = new DataOutputStream(connection.getOutputStream());
+
+            dStream.writeBytes(urlParameter);
+            dStream.flush();
+            dStream.close();
+
+            int responseCode = connection.getResponseCode();
+
+            if (responseCode != HttpURLConnection.HTTP_OK)
+                Log.d("Mitja ERROR", String.valueOf(responseCode));
+            else
+                Log.d("Mitja WORKS", String.valueOf(responseCode));
+
+            String output = "Request URl "+ url;
+            output += System.getProperty("line.seperator")+"Request Parameters "+ urlParameter;
+            output += System.getProperty("line.seperator")+"Request Response Code "+ responseCode;
+
+            BufferedReader br = new BufferedReader(new InputStreamReader(connection.getInputStream()));
+
+            String line = "";
+            StringBuilder reponseOutput = new StringBuilder();
+
+            while ((line = br.readLine()) != null){
+                reponseOutput.append(line);
+            }
+            br.close();
+
+            output += System.getProperty("line.seperator")+ reponseOutput.toString();
+
+            result = output;
+
+
+
+        } catch (MalformedURLException e) {
+            e.printStackTrace();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+
+        return result;
+
+    }
+
+
+
+    /**********************************************************END*******************************************************************/
+
+    //TODO(): add precision
+    //Function to add a marker on maps
+    private void addParkingMarker(String id, double lat, double lng, float time){
+
+        //First check if this marker already exists on the maps
+        for(ParkingMarker marker : markersList){
+            //if it does then jump out of a function without placing the marker
+            if(id.compareTo(marker.getID()) == 0){
+                return;
+            }
+        }
+
+        //options serve as propreties of marker(position, icon, name...)
+        MarkerOptions myMarkerOptions = new MarkerOptions().position(new LatLng(lat, lng))
+                .title("Take Parking")
+                .icon(BitmapDescriptorFactory.fromResource(R.mipmap.ic_launcher_round))
+                .anchor(0.5f,0.5f);
+
+        //v Maps dodam nov marker in ga shranim v marker list
+        markersList.add( new ParkingMarker( id, lat, lng,100f,10f,mMap.addMarker(myMarkerOptions)));
+
+    }
 
 }
 
