@@ -51,7 +51,7 @@ public class ParkingMarker {
 
     private float calculateAlphaForTime(float a){
         //TODO(): update mathematical function
-        return alpha-0.1f; //this should be a more coplicated function involving TIME
+        return alpha-0.01f; //this should be a more coplicated function involving TIME
     }
 
 

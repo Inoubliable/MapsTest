@@ -19,12 +19,12 @@ import com.google.android.gms.maps.OnMapReadyCallback;
 import com.google.android.gms.maps.SupportMapFragment;
 import com.google.android.gms.maps.model.BitmapDescriptorFactory;
 import com.google.android.gms.maps.model.LatLng;
+import com.google.android.gms.maps.model.Marker;
 import com.google.android.gms.maps.model.MarkerOptions;
 import com.google.android.gms.maps.model.PolygonOptions;
 import com.google.android.gms.maps.model.PolylineOptions;
 import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
-import com.google.maps.android.clustering.ClusterManager;
 
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -38,6 +38,7 @@ import java.net.HttpURLConnection;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Map;
 
 
@@ -45,6 +46,12 @@ import java.util.Map;
 //TODO(): after certian time(10min) old markers shold be delited
 
 public class MapsActivity extends FragmentActivity implements OnMapReadyCallback, LocationListener {
+
+
+
+
+
+    /**********************************************GLOBAL VARIABLES****************************************************/
 
     private GoogleMap mMap;
 
@@ -58,9 +65,13 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 
     Handler UI_HANDLER;//For thread events (setting a clocl trigerted fucntion for updating the oppacity of markers)
 
+    /**************************************************END**************************************************************/
 
-    // Declare a variable for the cluster manager.
-    private ClusterManager<MyItem> mClusterManager;//test
+
+
+
+
+    /*************************************ANDROID ACTIVITY FUNCTIONS(onCreade, onPause, onResume)***************************/
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -90,10 +101,11 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         } catch (SecurityException e) {}
 
 
-        //To trenutno dobi json iz linka in v Toast.show() izpiše podatke ki jih je vrnu server
+        //Gets Json from server and adds markers on maps after
         new JsonTask().execute("https://peaceful-taiga-88033.herokuapp.com/users");
 
 
+        //For marker animation
         UI_HANDLER = new Handler(); //to be handle thread events
         UI_HANDLER.postDelayed(UI_UPDTAE_RUNNABLE, 1000);//This is like a clock triger event that runs on a UI(main) thread
 
@@ -101,24 +113,38 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 
     }
 
+    @Override
+    protected void onResume() {
+        super.onResume();
 
-    //This is like a clock triger event that runs on a UI(main) thread
-    //This is needed to update the oppacitiy of the markers, but they cannot be accest from another thread
-    //It gets called every second
-    Runnable UI_UPDTAE_RUNNABLE = new Runnable() {
+        try {
+            locationManager.requestLocationUpdates(provider, 400, 1, this);
+        } catch (SecurityException e) {
 
-        @Override
-        public void run() {
-
-            for(ParkingMarker mark : markersList){
-
-                mark.updateAlpha();
-
-            }
-
-            UI_HANDLER.postDelayed(UI_UPDTAE_RUNNABLE, 1000);
         }
-    };
+    }
+
+
+    @Override
+    protected void onPause() {
+        super.onPause();
+
+        locationManager.removeUpdates(this);
+    }
+
+    /**************************************************END*************************************************************/
+
+
+
+
+
+
+
+
+
+
+    /*************************************GOOGLE MAPS FUNCTIONS(onMapReady, onLocationChanged)***************************************/
+    //TODO(): Remove old code from Tim
 
     @Override
     public void onMapReady(GoogleMap googleMap) {
@@ -127,6 +153,8 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         drawMyMarker();
     }
 
+
+    //This is old code from Tim using ustom shapes as marker
     private void drawMyMarker() {
         Toast.makeText(this, "Loading Free Parking Spaces", Toast.LENGTH_LONG).show();
 
@@ -178,24 +206,47 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 
     }
 
-    @Override
-    protected void onPause() {
-        super.onPause();
 
-        locationManager.removeUpdates(this);
-    }
+    /*********************************************************END***********************************************************/
 
-    @Override
-    protected void onResume() {
-        super.onResume();
 
-        try {
-            locationManager.requestLocationUpdates(provider, 400, 1, this);
-        } catch (SecurityException e) {
 
+
+
+
+
+
+
+    /***************************************************MARKER ANIMATION*********************************************/
+
+    //This is like a clock triger event that runs on a UI(main) thread
+    //This is needed to update the oppacitiy of the markers, but they cannot be accest from another thread(no animation loop therad possible)
+    //It gets called every second
+    Runnable UI_UPDTAE_RUNNABLE = new Runnable() {
+
+        @Override
+        public void run() {
+
+            for(ParkingMarker mark : markersList){
+
+                mark.updateAlpha();
+
+            }
+
+            UI_HANDLER.postDelayed(UI_UPDTAE_RUNNABLE, 1000);
         }
-    }
+    };
 
+    /*********************************************************END***************************************************/
+
+
+
+
+
+
+
+
+    /*******************************************GET DATA FROM SERVER CODE + ADD MARKERS FOR RECIVED LOCATIONS*********************************************************/
 
     //Class k iz podanega linka dobi JSON file iz serverja in v String zapiše podatke ki jih vrne server
     private class JsonTask extends AsyncTask<String, String, String> {
@@ -281,7 +332,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
                     double tempLng = Double.parseDouble(myMap.get("lng")); // najdem lng in za tem uzamem stevki in jih spremenim v double
                     String tempName = myMap.get("id");
 
-
+                    //options serve as propreties of marker(position, icon, name...)
                     MarkerOptions myMarkerOptions = new MarkerOptions().position(new LatLng(tempLat, tempLng))
                                                         .title(tempName)
                                                         .icon(BitmapDescriptorFactory.fromResource(R.mipmap.ic_launcher_round))
@@ -290,13 +341,34 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
                     //v Maps dodam nov marker in ga shranim v marker list
                     markersList.add( new ParkingMarker( tempName, tempLat, tempLng,100f,10f,mMap.addMarker(myMarkerOptions)));
 
-                    //TODO(): camera should be moved to user location not last marker
-                    //Kamero pomaknem na ta marker
-                    mMap.moveCamera(CameraUpdateFactory.newLatLngZoom(new LatLng(tempLat, tempLng), 3));
-
-                    setUpClusterer();
-
                 }
+
+
+
+
+
+
+                //TODO(DELETE): just a test
+                //added 1000 markers to see preformance
+                MarkerOptions myMarkerOptions = new MarkerOptions().position(new LatLng(1, 1))
+                        .title("")
+                        .icon(BitmapDescriptorFactory.fromResource(R.mipmap.ic_launcher_round))
+                        .anchor(0.5f,0.5f);
+
+                for(int k=0;k<1000;k++){
+                    myMarkerOptions.position(new LatLng(1+k*0.1, 3f));
+                    markersList.add( new ParkingMarker( "", 1+k*0.1, 3f,100f,10f,mMap.addMarker(myMarkerOptions)));
+                }
+
+
+
+
+
+
+                //TODO():Implement user location
+                //moves camera to User Location
+                mMap.moveCamera(CameraUpdateFactory.newLatLngZoom(new LatLng(1, 1), 3));
+
 
             } catch (JSONException e) {e.printStackTrace();}
         }
@@ -304,52 +376,15 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 
     }
 
-
-
-    private void setUpClusterer() {
-        // Position the map.
-        mMap.moveCamera(CameraUpdateFactory.newLatLngZoom(new LatLng(46.058291, 14.507687), 1));
-
-        // Initialize the manager with the context and the map.
-        // (Activity extends context, so we can pass 'this' in the constructor.)
-        mClusterManager = new ClusterManager<MyItem>(this, mMap);
-
-
-
-
-        // Point the map's listeners at the listeners implemented by the cluster
-        // manager.
-        mMap.setOnCameraIdleListener(mClusterManager);
-        mMap.setOnMarkerClickListener(mClusterManager);
-
-        // Add cluster items (markers) to the cluster manager.
-        addItems();
-    }
-
-    private void addItems() {
-
-        // Set some lat/lng coordinates to start with.
-        double lat = 46.058291;
-        double lng = 14.507687;
-
-        // Add ten cluster items in close proximity, for purposes of this example.
-        for (int i = 0; i < 10; i++) {
-            double offset = i / 9000d;
-            lat = lat + offset;
-            lng = lng + offset;
-            MyItem offsetItem = new MyItem(lat, lng);
-            mClusterManager.addItem(offsetItem);
-        }
-
-        for(ParkingMarker marker : markersList){
-            MyItem offsetItem = new MyItem(marker.lat, marker.lng);
-            mClusterManager.addItem(offsetItem);
-
-        }
-    }
-
+    /**************************************************************END******************************************************/
 
 
 
 
 }
+
+
+
+
+
+
