@@ -2,6 +2,7 @@ package com.janzelj.tim.mapstest;
 
 import android.content.Context;
 import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
 import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Paint;
@@ -77,13 +78,23 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 
 
     Paint userMarkerPaint, userMarkerPaintText;
-    Paint garageMarkerPaint, garageMarkerPaintText;
+    Paint parkingHousePaint, parkingHousePaintText;
     Paint mitjaMarkerPaint, mitjaMarkerPaintText;
 
-    Bitmap.Config bitmapConfig;
-    Bitmap bitmapForMarker;
+    Bitmap.Config bitmapConfigUserMarker;
+    Bitmap bitmapForUserMarker;
 
-    Canvas canvasMarker;
+    Canvas canvasUserMarker;
+
+
+
+    Bitmap.Config bitmapConfigeParkingHouseMarker;
+    Bitmap bitmapForParkingHouseMarker;
+    Paint parkingMarkerPaintText;
+
+    Canvas canvasParkingHouseMarker;
+
+
 
 
 
@@ -111,9 +122,9 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         markersWithCircles = new ArrayList<>();
 
         //setup Bitmap and cavas used to create Icons for Markers
-        bitmapConfig = Bitmap.Config.ARGB_8888;
-        bitmapForMarker = Bitmap.createBitmap(200,200,bitmapConfig);
-        canvasMarker = new Canvas(bitmapForMarker);
+        bitmapConfigUserMarker = Bitmap.Config.ARGB_8888;
+        bitmapForUserMarker = Bitmap.createBitmap(200,200, bitmapConfigUserMarker);
+        canvasUserMarker = new Canvas(bitmapForUserMarker);
         //setup Paints for canvas
         userMarkerPaint = new Paint();
         userMarkerPaint.setColor(Color.RED);
@@ -125,10 +136,32 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         userMarkerPaint.setTypeface(Typeface.create(Typeface.DEFAULT, Typeface.BOLD));
         userMarkerPaintText.setTextSize(40);
 
+        //This has to be so when the markers are created they bitmap is not empty
         //TODO(DELETE): test
-        canvasMarker.drawColor(Color.TRANSPARENT, PorterDuff.Mode.CLEAR);
-        canvasMarker.drawCircle(100,100,50,userMarkerPaint);
-        canvasMarker.drawText("NEW", canvasMarker.getWidth() / 2, (canvasMarker.getHeight()/2)+15, userMarkerPaintText);
+        canvasUserMarker.drawColor(Color.TRANSPARENT, PorterDuff.Mode.CLEAR);
+        canvasUserMarker.drawCircle(100,100,50,userMarkerPaint);
+        canvasUserMarker.drawText("NEW", canvasUserMarker.getWidth() / 2, (canvasUserMarker.getHeight()/2)+15, userMarkerPaintText);
+
+
+        //TODO(DELETE): test
+        //ParkingHouse Marskers paint canvas and bitmapDescriptor
+        bitmapConfigeParkingHouseMarker = Bitmap.Config.ARGB_8888;
+        bitmapForParkingHouseMarker = Bitmap.createBitmap(150,150, bitmapConfigeParkingHouseMarker);
+        parkingHousePaintText = new Paint();
+        parkingHousePaintText.setColor(Color.WHITE);
+        parkingHousePaintText.setStyle(Paint.Style.FILL_AND_STROKE);
+        parkingHousePaintText.setTextAlign(Paint.Align.CENTER);
+        parkingHousePaintText.setTypeface(Typeface.create(Typeface.DEFAULT, Typeface.BOLD));
+        parkingHousePaintText.setTextSize(60);
+
+        canvasParkingHouseMarker = new Canvas(bitmapForParkingHouseMarker);
+        canvasParkingHouseMarker.drawColor(Color.TRANSPARENT, PorterDuff.Mode.CLEAR);
+        Bitmap temp = BitmapFactory.decodeResource(getResources(),R.mipmap.parking_house);
+        canvasParkingHouseMarker.drawBitmap(temp,0,0,null);
+        canvasParkingHouseMarker.drawText("36",canvasParkingHouseMarker.getWidth()- 40, (canvasUserMarker.getHeight()/2)+10, parkingHousePaintText);
+
+
+
 
 
         //Code to get user location
@@ -142,9 +175,6 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
             }
         } catch (SecurityException e) {}
 
-
-        //Gets Json from server and adds markers on maps after
-        new JsonTask().execute("https://peaceful-taiga-88033.herokuapp.com/users?lat="+String.valueOf(46.054515)+"&lng="+String.valueOf(14.504680)+"&r=500&");
 
 
         //For marker animation
@@ -194,6 +224,11 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         //TODO(): Better loading screan, than just Toast
         Toast.makeText(this, "Loading Free Parking Spaces", Toast.LENGTH_LONG).show();
 
+        //TODO(IMPORTNAT): Canot add objects to Map here beacuse it is lockef by a seperate thread JsonTASK()
+
+        //Gets Json from server and adds markers on maps after(UserMarker and than ParkingHouses)
+        new GET_USER_SUBBMITED_PARKINGS().execute("https://peaceful-taiga-88033.herokuapp.com/users?lat="+String.valueOf(46.054515)+"&lng="+String.valueOf(14.504680)+"&r=500&");
+
 
 
 
@@ -232,8 +267,6 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
                     }
                 }
 
-
-
                 return false;
             }
         });
@@ -260,7 +293,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
             @Override
             public void onMapLongClick(LatLng latLng) {
                 //pass parking spot to server, LOACTION PRECISION(last parameter) is 0 becasue user did not use GPS to give location but clicked
-                new PostSpot(latLng.latitude, latLng.longitude, System.currentTimeMillis(),0).execute("");
+                new POST_NEW_USER_PARKING(latLng.latitude, latLng.longitude, System.currentTimeMillis(),0).execute("");
 
             }
         });
@@ -373,7 +406,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
     /*******************************************GET DATA FROM SERVER CODE + ADD MARKERS FOR RECIVED LOCATIONS*********************************************************/
 
     //Class k iz podanega linka dobi JSON file iz serverja in v String zapiše podatke ki jih vrne server
-    private class JsonTask extends AsyncTask<String, String, String> {
+    private class GET_USER_SUBBMITED_PARKINGS extends AsyncTask<String, String, String> {
 
         protected void onPreExecute() {
             super.onPreExecute();
@@ -462,6 +495,12 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
                 //moves camera to User Location
                 googleMap.moveCamera(CameraUpdateFactory.newLatLngZoom(new LatLng(46.054515, 14.504680), 15));
 
+                //TODO(): uncomment
+                //I can not run get user markers and parking houses at the same time because one Locks googleMap and the other cand add markers at that time
+                //new GET_PARKING_HOUSES().execute("https://peaceful-taiga-88033.herokuapp.com/parkings");
+
+                addParkingHouse("BTC", 46.067878, 14.547504, 67);
+
 
             } catch (JSONException | NullPointerException e) {e.printStackTrace();}
         }
@@ -477,14 +516,14 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 
     /****************************************************POST DATA TO SERVER**********************************************************/
 
-    public class PostSpot extends AsyncTask<String, String, String> {
+    class POST_NEW_USER_PARKING extends AsyncTask<String, String, String> {
 
         String latitute, longitute;
         String id;
         float timeOfCreation;
         String locationPrecision;
 
-        public PostSpot(double latitute, double longitute,float timeOfCreation, float locationPrecision){
+        POST_NEW_USER_PARKING(double latitute, double longitute, float timeOfCreation, float locationPrecision){
 
 
             this.latitute = String.valueOf(latitute);
@@ -602,6 +641,112 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 
     /**********************************************************END*******************************************************************/
 
+
+
+    /*********************************************************GET PAYED PARKINGS FROM SERVER****************************************/
+
+    private class GET_PARKING_HOUSES extends AsyncTask<String, String, String> {
+
+        protected void onPreExecute() {
+            super.onPreExecute();
+
+
+        }
+
+        protected String doInBackground(String... params) {
+
+
+            HttpURLConnection connection = null;
+            BufferedReader reader = null;
+
+            try {
+                URL url = new URL(params[0]);
+                connection = (HttpURLConnection) url.openConnection();
+                connection.connect();
+
+
+                InputStream stream = connection.getInputStream();
+
+                reader = new BufferedReader(new InputStreamReader(stream));
+
+                StringBuffer buffer = new StringBuffer();
+                String line = "";
+
+                while ((line = reader.readLine()) != null) {
+                    buffer.append(line+"\n");
+                }
+
+                return buffer.toString();
+
+
+            } catch (MalformedURLException e) {
+                e.printStackTrace();
+            } catch (IOException e) {
+                e.printStackTrace();
+            } finally {
+                if (connection != null) {
+                    connection.disconnect();
+                }
+                try {
+                    if (reader != null) {
+                        reader.close();
+                    }
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+            }
+            return null;
+        }
+
+        @Override
+        protected void onPostExecute(String result) {
+            super.onPostExecute(result);
+
+            Gson gson = new Gson();//a external libery object for reading HTTP JSON responses
+
+            //Zbriše vse truntne markerje
+            googleMap.clear();
+
+            try {
+                JSONArray tempArray = new JSONArray(result);//Paharsa string Json v Json array
+
+                for(int i=0; i<tempArray.length();i+=1){
+
+
+                    String innerArray = tempArray.getString(i);//ker je Json sestavljen iz arrayey morm dobit usak array posevi kot string
+
+                    Type type = new TypeToken<Map<String, String>>(){}.getType(); //DA lagko pol v Map podam keksn tip je ker item
+                    Map<String, String> myMap = gson.fromJson(innerArray, type); //Key-Value map k lagk pol vn uzamem lat, lng, time
+
+                    //TODO(): get parking houses names
+
+                    double tempLat = Double.parseDouble(myMap.get("lat")); // najdem lat in za tem uzamem stevki in jih spremenim v double
+                    double tempLng = Double.parseDouble(myMap.get("lng")); // najdem lng in za tem uzamem stevki in jih spremenim v double
+                    int tempNumSpaces = Integer.parseInt(myMap.get("available"));
+                    String tempName = "Parking House";
+
+
+                    //TODO(Tim): add precision of marker
+                    addParkingHouse(tempName, tempLat,tempLng, tempNumSpaces);
+
+                }
+
+                //TODO():Implement user location
+                //moves camera to User Location
+                googleMap.moveCamera(CameraUpdateFactory.newLatLngZoom(new LatLng(46.054515, 14.504680), 15));
+
+
+
+            } catch (JSONException | NullPointerException e) {e.printStackTrace();}
+        }
+
+
+    }
+
+
+
+    /***********************************************************END*****************************************************************/
+
     //TODO(): add precision
     //Function to add a marker on maps
     private void addUserMarker(String id, double lat, double lng, float timeOfCreation, float locationPrecision){
@@ -617,7 +762,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         //options serve as propreties of marker(position, icon, name...)
         MarkerOptions myMarkerOptions = new MarkerOptions().position(new LatLng(lat, lng))
                 .title("Take Parking")
-                .icon(BitmapDescriptorFactory.fromBitmap(bitmapForMarker))
+                .icon(BitmapDescriptorFactory.fromBitmap(bitmapForUserMarker))
                 .anchor(0.5f,0.5f);
 
         //v Maps dodam nov marker in ga shranim v marker list
@@ -635,13 +780,34 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 
         userMarkerPaint.setColor(Color.rgb(marker.getMarkerColor()[0],0,marker.getMarkerColor()[1]));
         //TODO(DELETE): non fixed values for drawing
-        canvasMarker.drawColor(Color.TRANSPARENT, PorterDuff.Mode.CLEAR);
-        canvasMarker.drawCircle(100,100,50,userMarkerPaint);
-        canvasMarker.drawText("P", canvasMarker.getWidth() / 2, (canvasMarker.getHeight()/2)+15, userMarkerPaintText);
+        canvasUserMarker.drawColor(Color.TRANSPARENT, PorterDuff.Mode.CLEAR);
+        canvasUserMarker.drawCircle(100,100,50,userMarkerPaint);
+        canvasUserMarker.drawText("P", canvasUserMarker.getWidth() / 2, (canvasUserMarker.getHeight()/2)+15, userMarkerPaintText);
 
-        marker.getMarker().setIcon(BitmapDescriptorFactory.fromBitmap(bitmapForMarker));
+        marker.getMarker().setIcon(BitmapDescriptorFactory.fromBitmap(bitmapForUserMarker));
 
     }
+
+
+
+    private void addParkingHouse(String name, Double latitute, Double longitute, int numSpaces){
+
+
+        canvasParkingHouseMarker.drawColor(Color.TRANSPARENT, PorterDuff.Mode.CLEAR);
+        Bitmap temp = BitmapFactory.decodeResource(getResources(),R.mipmap.parking_house);
+        canvasParkingHouseMarker.drawBitmap(temp,0,0,null);
+        canvasParkingHouseMarker.drawText(String.valueOf(numSpaces),canvasParkingHouseMarker.getWidth()- 40, (canvasUserMarker.getHeight()/2)+10, parkingHousePaintText);
+
+
+        MarkerOptions tempOptions = new MarkerOptions().position(new LatLng(latitute, longitute))
+                .icon(BitmapDescriptorFactory.fromBitmap(bitmapForParkingHouseMarker))
+                .title(name)
+                .anchor(0.5f,0.5f);
+
+        googleMap.addMarker(tempOptions);
+
+    }
+
 
 }
 

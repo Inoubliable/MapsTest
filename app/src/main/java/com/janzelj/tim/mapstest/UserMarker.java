@@ -92,7 +92,7 @@ class UserMarker {
     void updateMarkerAge(){
         age = calculateMarkerAge();
         markerColor = calculateColorFromAge();
-        Log.d("Marker Age", String.valueOf(age*6000000));
+        //Log.d("Marker Age", String.valueOf(age*6000000));
     }
 
     private int[] calculateColorFromAge(){
