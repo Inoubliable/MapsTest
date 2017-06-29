@@ -7,6 +7,7 @@ import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Paint;
 import android.graphics.PorterDuff;
+import android.graphics.Rect;
 import android.graphics.Typeface;
 
 import com.google.android.gms.maps.model.BitmapDescriptor;
@@ -25,6 +26,9 @@ class ParkerMarkerIconMaker {
     private Canvas canvas;
     private Bitmap bitmap;
     private Paint textPaint;
+
+    Rect src;
+    Rect dst;
 
 
     private Bitmap houseBitmap;
@@ -51,6 +55,9 @@ class ParkerMarkerIconMaker {
 
         houseBitmap = BitmapFactory.decodeResource(context.getResources(),R.drawable.parking_house);
 
+        src = new Rect(0,0,houseBitmap.getWidth(),houseBitmap.getHeight());
+        dst = new Rect(0,0,iconSize,iconSize);
+
 
 
 
@@ -61,7 +68,7 @@ class ParkerMarkerIconMaker {
     BitmapDescriptor getNewIcon(int numberOfSpaces){
 
         canvas.drawColor(Color.TRANSPARENT, PorterDuff.Mode.CLEAR);
-        canvas.drawBitmap(houseBitmap,0,0,null);
+        canvas.drawBitmap(houseBitmap,src,dst,null);
         canvas.drawText(String.valueOf(numberOfSpaces),canvas.getWidth()/2, (canvas.getHeight()/2)+45, textPaint);
 
         return BitmapDescriptorFactory.fromBitmap(bitmap);
