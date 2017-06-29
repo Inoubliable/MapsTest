@@ -17,6 +17,11 @@ import android.os.Handler;
 import android.support.v4.app.FragmentActivity;
 import android.os.Bundle;
 import android.util.Log;
+import android.view.View;
+import android.view.animation.Animation;
+import android.view.animation.AnimationUtils;
+import android.widget.Button;
+import android.widget.LinearLayout;
 import android.widget.Toast;
 
 import com.google.android.gms.maps.CameraUpdateFactory;
@@ -64,6 +69,15 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 
     /**********************************************GLOBAL VARIABLES****************************************************/
 
+    Animation slideInAnim;
+    Animation slideOutAnim;
+    Animation gearAnim;
+
+    LinearLayout optionsMenu;
+    Button openOptions;
+
+
+
     private GoogleMap googleMap;
 
     LocationManager locationManager;
@@ -79,24 +93,8 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 
 
 
-    Paint parkingHousePaint, parkingHousePaintText;
-
-
-
-    Bitmap bitmapForUserMarker;
-
-    Canvas canvasUserMarker;
-
-
-
-    Bitmap.Config bitmapConfigeParkingHouseMarker;
-    Bitmap bitmapForParkingHouseMarker;
-
-
-    Canvas canvasParkingHouseMarker;
-
     UserMarkerIconMaker userMarkerIconMaker;
-
+    ParkerMarkerIconMaker parkerMarkerIconMaker;
 
 
 
@@ -120,33 +118,23 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         mapFragment.getMapAsync(this);
 
 
+        // load the animation
+        slideInAnim = AnimationUtils.loadAnimation(getApplicationContext(),R.anim.slide_in);
+        slideOutAnim = AnimationUtils.loadAnimation(getApplicationContext(),R.anim.slide_out);
+        gearAnim = AnimationUtils.loadAnimation(getApplicationContext(),R.anim.gear_anim);
+
+        optionsMenu = (LinearLayout) findViewById(R.id.optionsMenu);
+        openOptions = (Button) findViewById(R.id.openOptions);
+
+
 
         markersList = new ArrayList<>(); //sotres ParkingMarkers for updating the oppacity of markers
         markersWithCircles = new ArrayList<>();
 
 
-
-        //TODO(DELETE): test
-        //ParkingHouse Marskers paint canvas and bitmapDescriptor
-        bitmapConfigeParkingHouseMarker = Bitmap.Config.ARGB_8888;
-        bitmapForParkingHouseMarker = Bitmap.createBitmap(150,150, bitmapConfigeParkingHouseMarker);
-        parkingHousePaintText = new Paint();
-        parkingHousePaintText.setColor(Color.WHITE);
-        parkingHousePaintText.setStyle(Paint.Style.FILL_AND_STROKE);
-        parkingHousePaintText.setTextAlign(Paint.Align.CENTER);
-        parkingHousePaintText.setTypeface(Typeface.create(Typeface.DEFAULT, Typeface.BOLD));
-        parkingHousePaintText.setTextSize(70);
-
-        canvasParkingHouseMarker = new Canvas(bitmapForParkingHouseMarker);
-        canvasParkingHouseMarker.drawColor(Color.TRANSPARENT, PorterDuff.Mode.CLEAR);
-        Bitmap temp = BitmapFactory.decodeResource(getResources(),R.mipmap.parking_house);
-        canvasParkingHouseMarker.drawBitmap(temp,0,0,null);
-        canvasParkingHouseMarker.drawText("36",canvasParkingHouseMarker.getWidth()- 40, (canvasParkingHouseMarker.getHeight()/2)+10, parkingHousePaintText);
-
-
-
-
         userMarkerIconMaker = new UserMarkerIconMaker(100,40);
+
+        parkerMarkerIconMaker = new ParkerMarkerIconMaker(150,60,this);
 
 
         //Code to get user location
@@ -774,20 +762,37 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
     private void addParkingHouse(String name, Double latitute, Double longitute, int numSpaces){
 
 
-        canvasParkingHouseMarker.drawColor(Color.TRANSPARENT, PorterDuff.Mode.CLEAR);
-        Bitmap temp = BitmapFactory.decodeResource(getResources(),R.mipmap.parking_house);
-        canvasParkingHouseMarker.drawBitmap(temp,0,0,null);
-        canvasParkingHouseMarker.drawText(String.valueOf(numSpaces),canvasParkingHouseMarker.getWidth()/2, (canvasParkingHouseMarker.getHeight()/2)+45, parkingHousePaintText);
-
 
         MarkerOptions tempOptions = new MarkerOptions().position(new LatLng(latitute, longitute))
-                .icon(BitmapDescriptorFactory.fromBitmap(bitmapForParkingHouseMarker))
+                .icon(parkerMarkerIconMaker.getNewIcon(numSpaces))
                 .title(name)
                 .anchor(0.5f,0.5f);
 
         googleMap.addMarker(tempOptions);
 
     }
+
+
+
+
+
+    public void claimParking(View view){
+
+    }
+
+    public void onOptions(View view){
+        if(optionsMenu.getVisibility() == View.GONE) {
+            openOptions.startAnimation(gearAnim);
+            optionsMenu.setVisibility(View.VISIBLE);
+            optionsMenu.startAnimation(slideInAnim);
+        }else{
+            optionsMenu.startAnimation(slideOutAnim);
+            optionsMenu.setVisibility(View.GONE);
+        }
+    }
+
+
+
 
 
 }

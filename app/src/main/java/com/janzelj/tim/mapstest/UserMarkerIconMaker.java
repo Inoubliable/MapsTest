@@ -20,13 +20,12 @@ import java.util.Random;
 
 class UserMarkerIconMaker{
 
-
+    private final float NUMBER_OF_SEGMENTS = 120;
 
     private Canvas canvas;
-    private Bitmap.Config bitmapConfig;
     private Bitmap bitmap;
     private Paint textPaint;
-    private BitmapDescriptor bitmapDescriptor;
+
 
 
     private float iconSize;
@@ -63,14 +62,13 @@ class UserMarkerIconMaker{
         textPaint.setTypeface(Typeface.create(Typeface.DEFAULT, Typeface.BOLD));
 
 
-        bitmapConfig = Bitmap.Config.ARGB_8888;
+        Bitmap.Config bitmapConfig = Bitmap.Config.ARGB_8888;
         bitmap = Bitmap.createBitmap(iconSize,iconSize, bitmapConfig);
 
         canvas = new Canvas(bitmap);
 
 
 
-        bitmapDescriptor = BitmapDescriptorFactory.fromBitmap(bitmap);
 
 
         pathArrayList = new ArrayList<>();
@@ -99,7 +97,7 @@ class UserMarkerIconMaker{
 
     private int calculateAgeCount(float age){
 
-
+        //TODO(): calulate kazalec related to time
         if(age < 434.723){
             return 0;
         }else if(age < 873.81506){
@@ -117,22 +115,15 @@ class UserMarkerIconMaker{
 
     private void caclulateVerticies(){
 
-        float numOfSegments = 120;
-
         double[] vertex = new double[]{0,-iconSize/2};
 
         double[] translateVector = new double[]{iconSize/2,iconSize/2}; // doubles as circle center
 
-        double[] roatitonMatrix = Maths.getCWmatrix(360/numOfSegments);
+        double[] roatitonMatrix = Maths.getCWmatrix(360/NUMBER_OF_SEGMENTS);
 
-        vertecies.add(translateVector);
-        vertecies.add(Maths.sumVectorVector(vertex,translateVector));
-        vertex = Maths.mulMatrixVector(roatitonMatrix, vertex);
-        vertecies.add(Maths.sumVectorVector(vertex,translateVector));
-        vertecies.add(translateVector);
-
-        while (numOfSegments > 1){
-            numOfSegments--;
+        float temp = NUMBER_OF_SEGMENTS;
+        while (temp >= 0){
+            temp--;
 
             vertecies.add(translateVector);
             vertecies.add(Maths.sumVectorVector(vertex,translateVector));
