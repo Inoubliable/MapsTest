@@ -8,6 +8,9 @@ import com.google.android.gms.maps.model.CircleOptions;
 import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.maps.model.Marker;
 
+import java.text.SimpleDateFormat;
+import java.util.Date;
+
 /**
  * Created by mitja on 6/28/17.
  */
@@ -93,6 +96,7 @@ class UserMarker {
         age = calculateMarkerAge();
         markerColor = calculateColorFromAge();
         //Log.d("Marker Age", String.valueOf(age*6000000));
+        //Log.d("Marker Age", String.valueOf(age*6000000));
     }
 
     private int[] calculateColorFromAge(){
@@ -107,14 +111,20 @@ class UserMarker {
     }
 
 
+    //returnes age in minutes
     private float calculateMarkerAge(){
-         //TODO(DELE): test
-        float temp =  System.currentTimeMillis() - timeOfCreation;
-
-        return temp;
+        return (float) ((System.currentTimeMillis() - timeOfCreation)*(1.66667*Math.pow(10,-5)));
     }
 
     float getAge() {
+
+        /*
+        long yourmilliseconds = System.currentTimeMillis();
+        SimpleDateFormat sdf = new SimpleDateFormat("HH:mm");
+        Date resultdate = new Date(yourmilliseconds);
+        System.out.println(sdf.format(resultdate));
+        */
+
         return age;
     }
 
