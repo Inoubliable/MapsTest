@@ -1,11 +1,13 @@
 package com.janzelj.tim.mapstest;
 
+import android.animation.ValueAnimator;
 import android.content.Context;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Paint;
+import android.graphics.Point;
 import android.graphics.PorterDuff;
 import android.graphics.Typeface;
 import android.location.Criteria;
@@ -14,12 +16,15 @@ import android.location.LocationListener;
 import android.location.LocationManager;
 import android.os.AsyncTask;
 import android.os.Handler;
+import android.os.SystemClock;
 import android.support.v4.app.FragmentActivity;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.View;
 import android.view.animation.Animation;
 import android.view.animation.AnimationUtils;
+import android.view.animation.Interpolator;
+import android.view.animation.LinearInterpolator;
 import android.widget.Button;
 import android.widget.LinearLayout;
 import android.widget.Toast;
@@ -27,7 +32,9 @@ import android.widget.Toast;
 import com.google.android.gms.maps.CameraUpdateFactory;
 import com.google.android.gms.maps.GoogleMap;
 import com.google.android.gms.maps.OnMapReadyCallback;
+import com.google.android.gms.maps.Projection;
 import com.google.android.gms.maps.SupportMapFragment;
+import com.google.android.gms.maps.model.BitmapDescriptor;
 import com.google.android.gms.maps.model.BitmapDescriptorFactory;
 import com.google.android.gms.maps.model.Circle;
 import com.google.android.gms.maps.model.CircleOptions;
@@ -95,6 +102,9 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 
     UserMarkerIconMaker userMarkerIconMaker;
     ParkerMarkerIconMaker parkerMarkerIconMaker;
+
+
+    Marker thankYouMarker;
 
 
 
@@ -204,7 +214,10 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 
 
 
+        final MarkerOptions thankYouOpt = new MarkerOptions().visible(false).position(new LatLng(0,0)).icon(BitmapDescriptorFactory.fromResource(R.drawable.thank_you_icon));
+        thankYouMarker = googleMap.addMarker(thankYouOpt);
 
+        generateTestingMarkers();
 
         //Function onMarker Click (show the precision of the marker placement)
         this.googleMap.setOnMarkerClickListener(new GoogleMap.OnMarkerClickListener() {
@@ -267,7 +280,9 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
             public void onMapLongClick(LatLng latLng) {
                 //pass parking spot to server, LOACTION PRECISION(last parameter) is 0 becasue user did not use GPS to give location but clicked
                 new POST_NEW_USER_PARKING(latLng.latitude, latLng.longitude, System.currentTimeMillis(),0).execute("");
-
+                thankYouMarker.setPosition(latLng);
+                thankYouMarker.setVisible(true);
+                animateMarker(thankYouMarker, new LatLng(latLng.latitude + 0.0008, latLng.longitude), true);
             }
         });
 
@@ -356,12 +371,21 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         public void run() {
 
 
+            UserMarker tempMarker;
+            ArrayList<UserMarker> toDelete = new ArrayList<>();
+
             for(UserMarker marker : markersList){
 
 
 
-                updatUserMarkerIconColor(marker);
+                tempMarker =  updatUserMarkerIconColor(marker);
+                if(tempMarker != null){
+                    toDelete.add(tempMarker);
+                }
+            }
 
+            for(UserMarker deleteMarker : toDelete){
+                markersList.remove(deleteMarker);
             }
 
             //TODO(): update for other type of markers as well
@@ -450,7 +474,6 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
             try {
                 JSONArray tempArray = new JSONArray(result);//Paharsa string Json v Json array
 
-                Log.d("USERS resoult", result);
 
                 for(int i=0; i<tempArray.length();i+=1){
 
@@ -501,10 +524,10 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 
         String latitute, longitute;
         String id;
-        float timeOfCreation;
+        double timeOfCreation;
         String locationPrecision;
 
-        POST_NEW_USER_PARKING(double latitute, double longitute, float timeOfCreation, float locationPrecision){
+        POST_NEW_USER_PARKING(double latitute, double longitute, double timeOfCreation, float locationPrecision){
 
 
             this.latitute = String.valueOf(latitute);
@@ -685,10 +708,8 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 
             try {
                 JSONArray tempArray = new JSONArray(result);//Paharsa string Json v Json array
-                //TODO(DELETE): the /10
-                //for(int i=0; i<tempArray.length()/20;i+=1){
-                for(int i=0; i<30;i+=1){
-                    Log.d("TEST","Call");
+                for(int i=0; i<tempArray.length();i+=1){
+
 
 
                     String innerArray = tempArray.getString(i);//ker je Json sestavljen iz arrayey morm dobit usak array posevi kot string
@@ -701,7 +722,9 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
                     double tempLat = Double.parseDouble(myMap.get("lat")); // najdem lat in za tem uzamem stevki in jih spremenim v double
                     double tempLng = Double.parseDouble(myMap.get("lng")); // najdem lng in za tem uzamem stevki in jih spremenim v double
                     int tempNumSpaces = Integer.parseInt(myMap.get("available"));
-                    String tempName = "Parking House";
+                    String tempName = myMap.get("name");
+
+                    Log.d("TEST",tempName);
 
 
                     //TODO(Tim): add precision of marker
@@ -727,7 +750,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 
     //TODO(): add precision
     //Function to add a marker on maps
-    private void addUserMarker(String id, double lat, double lng, float timeOfCreation, float locationPrecision){
+    private void addUserMarker(String id, double lat, double lng, double timeOfCreation, float locationPrecision){
 
         //First check if this marker already exists on the maps
         for(UserMarker marker : markersList){
@@ -749,11 +772,17 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         updatUserMarkerIconColor(markersList.get(markersList.size()-1));
     }
 
-    void updatUserMarkerIconColor(UserMarker marker){
+    private UserMarker updatUserMarkerIconColor(UserMarker marker){
 
         marker.updateMarkerAge();
+        if(marker.getAge() > 600){
+            marker.getMarker().remove();
+            return marker;
+        }else{
+            marker.getMarker().setIcon(userMarkerIconMaker.getNewIcon(marker.getAge()));
+            return null;
+        }
 
-        marker.getMarker().setIcon(userMarkerIconMaker.getNewIcon(marker.getAge()));
 
     }
 
@@ -792,6 +821,56 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
     }
 
 
+    public void animateMarker(final Marker marker, final LatLng toPosition, final boolean hideMarker) {
+        final Handler handler = new Handler();
+        final long start = SystemClock.uptimeMillis();
+        Projection proj = googleMap.getProjection();
+        Point startPoint = proj.toScreenLocation(marker.getPosition());
+        final LatLng startLatLng = proj.fromScreenLocation(startPoint);
+        final long duration = 500;
+        final Interpolator interpolator = new LinearInterpolator();
+        handler.post(new Runnable() {
+            @Override
+            public void run() {
+                long elapsed = SystemClock.uptimeMillis() - start;
+                float t = interpolator.getInterpolation((float) elapsed / duration);
+                double lng = t * toPosition.longitude + (1 - t) * startLatLng.longitude;
+                double lat = t * toPosition.latitude + (1 - t) * startLatLng.latitude;
+                marker.setPosition(new LatLng(lat, lng));
+                if (t < 1.0) {
+                    // Post again 16ms later.
+                    handler.postDelayed(this, 16);
+                } else {
+                    if (hideMarker) {
+                        marker.setVisible(false);
+                    } else {
+                        marker.setVisible(true);
+                    }
+                }
+            }
+        });
+    }
+
+
+    //TODO(DELETE):test
+    private void generateTestingMarkers(){
+
+        double starost = System.currentTimeMillis();
+        float lat = 46.056779f;
+        float lng = 14.506324f;
+
+        for(int i=0; i<10;i++){
+
+
+            MarkerOptions tempopt = new MarkerOptions().position(new LatLng(lat,lng));
+            markersList.add(new UserMarker("hi",new LatLng(lat,lng),starost,0,googleMap.addMarker(tempopt)));
+            starost -= 60000;
+            lng += 0.0007199999;
+        }
+
+
+
+    }
 
 
 

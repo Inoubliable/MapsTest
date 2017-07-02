@@ -23,27 +23,26 @@ class UserMarker {
     private String databaseID;
 
     private LatLng location;
-    private float timeOfCreation;
-    float locationPrecision;
+    private double timeOfCreation;
+    private float locationPrecision;
 
 
     private float alpha;
     private int[] markerColor;
-    private float age;
+    private double age;
 
 
     private Circle locationPrecisionCircle;
 
 
 
-    UserMarker(String databaseID, LatLng location, float timeOfCreation, float locationPrecision, Marker marker){
+    UserMarker(String databaseID, LatLng location, double timeOfCreation, float locationPrecision, Marker marker){
 
         this.databaseID = databaseID;
         this.location = location;
 
         age = calculateMarkerAge();
         this.timeOfCreation = timeOfCreation;
-        markerColor = calculateColorFromAge();
 
         this.locationPrecision = locationPrecision;
 
@@ -94,38 +93,22 @@ class UserMarker {
     //calculates marker age + updates its color and time signiture
     void updateMarkerAge(){
         age = calculateMarkerAge();
-        markerColor = calculateColorFromAge();
-        //Log.d("Marker Age", String.valueOf(age*6000000));
-        //Log.d("Marker Age", String.valueOf(age*6000000));
-    }
 
-    private int[] calculateColorFromAge(){
-        //TODO(): Actual formula for calculating color dependant on time
-        calculateMarkerAge();
-        int red = (int) (age * 0.00425f);
-        int blue = 255-red;
-        //Log.d("Marker Red",String.valueOf(red));
-        //Log.d("Marker Blue",String.valueOf(blue));
-        //[red, blue]
-        return new int[]{255,blue};
     }
 
 
-    //returnes age in minutes
-    private float calculateMarkerAge(){
-        return (float) ((System.currentTimeMillis() - timeOfCreation)*(1.66667*Math.pow(10,-5)));
+
+
+    //returnes age in seconds
+    private double calculateMarkerAge(){
+        //return (float) ((System.currentTimeMillis() - timeOfCreation)*(1.66667*Math.pow(10,-5))); //For minutes
+        return (System.currentTimeMillis() - timeOfCreation)*(0.001); // for seconds
+
     }
 
-    float getAge() {
-
-        /*
-        long yourmilliseconds = System.currentTimeMillis();
-        SimpleDateFormat sdf = new SimpleDateFormat("HH:mm");
-        Date resultdate = new Date(yourmilliseconds);
-        System.out.println(sdf.format(resultdate));
-        */
-
-        return age;
+    double getAge() {
+        Log.d("MarkerAge", ""+calculateMarkerAge()/60);
+        return calculateMarkerAge();
     }
 
     void animatePopIn(){

@@ -80,10 +80,10 @@ class UserMarkerIconMaker{
     }
 
 
-    BitmapDescriptor getNewIcon(float age){
+    BitmapDescriptor getNewIcon(double age){
 
-        //int i = calculateAgeCount(age);
-        int i = 0;
+        int i = calculateAgeCount(age);
+
 
         canvas.drawCircle(iconSize/2,iconSize/2,iconSize/2,redPaint);
         while (i < pathArrayList.size()){
@@ -95,20 +95,16 @@ class UserMarkerIconMaker{
         return BitmapDescriptorFactory.fromBitmap(bitmap);
     }
 
-    private int calculateAgeCount(float age){
+    private int calculateAgeCount(double age){
 
         //TODO(): calulate kazalec related to time
-        if(age < 434.723){
-            return 0;
-        }else if(age < 873.81506){
-            return 1;
-        }else if(age < 3134.8115){
-            return 2;
-        }else if(age >= 3508.3674){
-            return 3;
+
+        if(age < 600){ //if age less than 10 min
+            return (int) (age/5);
         }else {
-            return 4;
+            return 120;
         }
+
 
 
     }
@@ -152,5 +148,7 @@ class UserMarkerIconMaker{
         }
 
     }
+
+
 
 }
