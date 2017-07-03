@@ -1,15 +1,8 @@
 package com.janzelj.tim.mapstest;
 
-import android.animation.ValueAnimator;
 import android.content.Context;
-import android.graphics.Bitmap;
-import android.graphics.BitmapFactory;
-import android.graphics.Canvas;
 import android.graphics.Color;
-import android.graphics.Paint;
 import android.graphics.Point;
-import android.graphics.PorterDuff;
-import android.graphics.Typeface;
 import android.location.Criteria;
 import android.location.Location;
 import android.location.LocationListener;
@@ -34,7 +27,6 @@ import com.google.android.gms.maps.GoogleMap;
 import com.google.android.gms.maps.OnMapReadyCallback;
 import com.google.android.gms.maps.Projection;
 import com.google.android.gms.maps.SupportMapFragment;
-import com.google.android.gms.maps.model.BitmapDescriptor;
 import com.google.android.gms.maps.model.BitmapDescriptorFactory;
 import com.google.android.gms.maps.model.Circle;
 import com.google.android.gms.maps.model.CircleOptions;
@@ -56,9 +48,7 @@ import java.lang.reflect.Type;
 import java.net.HttpURLConnection;
 import java.net.MalformedURLException;
 import java.net.URL;
-import java.text.SimpleDateFormat;
 import java.util.ArrayList;
-import java.util.Date;
 import java.util.Map;
 
 
@@ -93,8 +83,10 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
     double lng;
 
 
-    ArrayList<UserMarker> markersList;//stores ParkingMarkers for updating the oppacity of markers
+    ArrayList<UserMarker> userMarkersList;//stores ParkingMarkers for updating the oppacity of markers
     ArrayList<Circle> markersWithCircles;//stores circles for displaying precision
+
+    ArrayList<ParkingHouseMarker> parkingMarkersList;
 
     Handler UPDATE_MARKERS_COLOR;//For thread events (setting a clocl trigerted fucntion for updating the oppacity of markers)
 
@@ -138,8 +130,10 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 
 
 
-        markersList = new ArrayList<>(); //sotres ParkingMarkers for updating the oppacity of markers
+        userMarkersList = new ArrayList<>(); //sotres ParkingMarkers for updating the oppacity of markers
         markersWithCircles = new ArrayList<>();
+
+        parkingMarkersList = new ArrayList<>();
 
 
         userMarkerIconMaker = new UserMarkerIconMaker(100,40);
@@ -225,7 +219,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
             public boolean onMarkerClick(Marker marker) {
 
                 //Loop through all markers to see witch marker was clicked
-                for(UserMarker userMarker : markersList){
+                for(UserMarker userMarker : userMarkersList){
                     //make action on cliced marker
                     if(userMarker.getMarker().getId().compareTo(marker.getId()) == 0){
                         //First check if marker already has active circle if not make one (if circles were added over each other they wouldn't be transperant)
@@ -242,6 +236,8 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
                             userMarker.setCircle(tempCircle); //add Circle to ParkingMarker (to later check "First check if marker already has active circle if not make one" on if)
 
                             marker.showInfoWindow(); //shows the infoWindows so it can ve clicked to remove the marker/parking spot
+
+                            userMarker.animatePopIn();
 
                             return false;
                         }else{
@@ -264,7 +260,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
             public void onMapClick(LatLng latLng) {
                 //TODO(optimization): lahko bi meu posebi shranjnene circles v list pa sam une v list zbrisu
                 //remove all infoWindows
-                for(UserMarker parkingMarker : markersList){
+                for(UserMarker parkingMarker : userMarkersList){
                     parkingMarker.getMarker().hideInfoWindow();
                     parkingMarker.removePrecisionCircle(); //sience we removed the circle its reference must be set to null as well( so if marker is clicked again, the circle will be redrawn)
                 }
@@ -295,7 +291,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
                 //cant delete marker mid for loop so i store it in here for deleting later
                 UserMarker parkingMarkerToRemove = null;
                 //Loop through all the marker to see witchs infowindow was clicked
-                for(UserMarker parkingMarker : markersList){
+                for(UserMarker parkingMarker : userMarkersList){
                     //when marker whos window was clicked is found delete the maerker, circle, parking spot
                     if(parkingMarker.getMarker().getId().compareTo(marker.getId()) == 0){
 
@@ -307,7 +303,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
                     }
 
                 }
-                markersList.remove(parkingMarkerToRemove);
+                userMarkersList.remove(parkingMarkerToRemove);
             }
         });
 
@@ -374,7 +370,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
             UserMarker tempMarker;
             ArrayList<UserMarker> toDelete = new ArrayList<>();
 
-            for(UserMarker marker : markersList){
+            for(UserMarker marker : userMarkersList){
 
 
 
@@ -385,7 +381,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
             }
 
             for(UserMarker deleteMarker : toDelete){
-                markersList.remove(deleteMarker);
+                userMarkersList.remove(deleteMarker);
             }
 
             //TODO(): update for other type of markers as well
@@ -753,23 +749,38 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
     private void addUserMarker(String id, double lat, double lng, double timeOfCreation, float locationPrecision){
 
         //First check if this marker already exists on the maps
-        for(UserMarker marker : markersList){
+        for(UserMarker marker : userMarkersList){
             //if it does then jump out of a function without placing the marker
             if(id.compareTo(marker.getDatabaseID()) == 0){
                 return;
             }
         }
 
-        //options serve as propreties of marker(position, icon, name...)
-        MarkerOptions myMarkerOptions = new MarkerOptions().position(new LatLng(lat, lng))
-                .title("Take Parking")
-                .icon(userMarkerIconMaker.getNewIcon(0))
-                .anchor(0.5f,0.5f);
 
         //v Maps dodam nov marker in ga shranim v marker list
-        markersList.add( new UserMarker( id, new LatLng(lat,lng),timeOfCreation,locationPrecision, googleMap.addMarker(myMarkerOptions)));
+        userMarkersList.add( new UserMarker( id, new LatLng(lat,lng),timeOfCreation,locationPrecision, googleMap, userMarkerIconMaker.getNewIcon(0)));
 
-        updatUserMarkerIconColor(markersList.get(markersList.size()-1));
+        updatUserMarkerIconColor(userMarkersList.get(userMarkersList.size()-1));
+    }
+
+    //Just adds pop in animation
+    private void popInUserMarker(String id, double lat, double lng, double timeOfCreation, float locationPrecision){
+
+        //First check if this marker already exists on the maps
+        for(UserMarker marker : userMarkersList){
+            //if it does then jump out of a function without placing the marker
+            if(id.compareTo(marker.getDatabaseID()) == 0){
+                return;
+            }
+        }
+
+
+        //v Maps dodam nov marker in ga shranim v marker list
+        userMarkersList.add( new UserMarker( id, new LatLng(lat,lng),timeOfCreation,locationPrecision, googleMap, userMarkerIconMaker.getNewIcon(0)));
+
+        updatUserMarkerIconColor(userMarkersList.get(userMarkersList.size()-1));
+
+        userMarkersList.get(userMarkersList.size()-1).animatePopIn();//The only difference from add UserMarker
     }
 
     private UserMarker updatUserMarkerIconColor(UserMarker marker){
@@ -790,6 +801,13 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 
     private void addParkingHouse(String name, Double latitute, Double longitute, int numSpaces){
 
+        //first check if this parking map already exists on the map
+        for(ParkingHouseMarker parkingHouseMarker : parkingMarkersList){
+            //TODO(): change comparison to some other id not name(2 parking houses could have the sam name)
+            if(parkingHouseMarker.getDatabaseID().compareTo(name) == 0){
+                return;
+            }
+        }
 
 
         MarkerOptions tempOptions = new MarkerOptions().position(new LatLng(latitute, longitute))
@@ -797,7 +815,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
                 .title(name)
                 .anchor(0.5f,0.5f);
 
-        googleMap.addMarker(tempOptions);
+        parkingMarkersList.add(new ParkingHouseMarker(name, new LatLng(latitute, longitute), numSpaces, googleMap.addMarker(tempOptions)));
 
     }
 
@@ -863,7 +881,9 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 
 
             MarkerOptions tempopt = new MarkerOptions().position(new LatLng(lat,lng));
-            markersList.add(new UserMarker("hi",new LatLng(lat,lng),starost,0,googleMap.addMarker(tempopt)));
+            userMarkersList.add(new UserMarker("hi",new LatLng(lat,lng),starost,0,googleMap,userMarkerIconMaker.getNewIcon(i*60)));
+
+
             starost -= 60000;
             lng += 0.0007199999;
         }

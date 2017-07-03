@@ -91,7 +91,7 @@ class UserMarkerIconMaker{
             i++;
         }
 
-        canvas.drawText("P",iconSize/2,(iconSize/2)+(textSize/2)-3,textPaint);
+        canvas.drawText(ageToDisplayTime(age),iconSize/2,(iconSize/2)+(textSize/2)-3,textPaint);
         return BitmapDescriptorFactory.fromBitmap(bitmap);
     }
 
@@ -127,6 +127,16 @@ class UserMarkerIconMaker{
             vertecies.add(Maths.sumVectorVector(vertex,translateVector));
             vertecies.add(translateVector);
         }
+    }
+
+    String ageToDisplayTime(double age){
+
+        if(age < 60){
+            return String.valueOf((Math.round(age)))+"s";
+        }else{
+            return String.valueOf((Math.round(age/60)))+"m";
+        }
+
     }
 
     private void makePath(){
