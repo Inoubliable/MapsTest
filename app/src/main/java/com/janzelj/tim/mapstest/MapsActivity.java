@@ -20,6 +20,7 @@ import android.view.animation.Interpolator;
 import android.view.animation.LinearInterpolator;
 import android.widget.Button;
 import android.widget.LinearLayout;
+import android.widget.RelativeLayout;
 import android.widget.Toast;
 
 import com.google.android.gms.maps.CameraUpdateFactory;
@@ -47,6 +48,7 @@ import java.io.InputStreamReader;
 import java.lang.reflect.Type;
 import java.net.HttpURLConnection;
 import java.net.MalformedURLException;
+import java.net.ProtocolException;
 import java.net.URL;
 import java.util.ArrayList;
 import java.util.Map;
@@ -66,12 +68,23 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 
     /**********************************************GLOBAL VARIABLES****************************************************/
 
-    Animation slideInAnim;
+    Animation slideInAnim1;
+    Animation slideInAnim2;
+    Animation slideInAnim3;
+    Animation slideInAnim4;
     Animation slideOutAnim;
-    Animation gearAnim;
+    Animation gearAnimOut;
+    Animation gearAnimIn;
 
     LinearLayout optionsMenu;
-    Button openOptions;
+    Button openOptBtn;
+    Button saveOptBtn;
+
+    RelativeLayout optionsTitle;
+    LinearLayout optionsDisplay;
+    LinearLayout optionsMarker;
+
+    Button claimParkBtn;
 
 
 
@@ -79,8 +92,9 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 
     LocationManager locationManager;
     String provider;
-    double lat;
-    double lng;
+    double globLATITUTE;
+    double globLONGITUTE;
+    float RADIUS;
 
 
     ArrayList<UserMarker> userMarkersList;//stores ParkingMarkers for updating the oppacity of markers
@@ -89,6 +103,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
     ArrayList<ParkingHouseMarker> parkingMarkersList;
 
     Handler UPDATE_MARKERS_COLOR;//For thread events (setting a clocl trigerted fucntion for updating the oppacity of markers)
+    Handler CHECK_FOR_SERVER_UPDATES;
 
 
 
@@ -97,6 +112,8 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 
 
     Marker thankYouMarker;
+
+    Marker markerInFocus;
 
 
 
@@ -121,12 +138,28 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 
 
         // load the animation
-        slideInAnim = AnimationUtils.loadAnimation(getApplicationContext(),R.anim.slide_in);
+        slideInAnim1 = AnimationUtils.loadAnimation(getApplicationContext(),R.anim.slide_in1);
+        slideInAnim2 = AnimationUtils.loadAnimation(getApplicationContext(),R.anim.slide_in2);
+        slideInAnim3 = AnimationUtils.loadAnimation(getApplicationContext(),R.anim.slide_in3);
+        slideInAnim4 = AnimationUtils.loadAnimation(getApplicationContext(),R.anim.slide_in4);
         slideOutAnim = AnimationUtils.loadAnimation(getApplicationContext(),R.anim.slide_out);
-        gearAnim = AnimationUtils.loadAnimation(getApplicationContext(),R.anim.gear_anim);
+        gearAnimOut = AnimationUtils.loadAnimation(getApplicationContext(),R.anim.gear_out);
+        gearAnimIn = AnimationUtils.loadAnimation(getApplicationContext(),R.anim.gear_in);
 
         optionsMenu = (LinearLayout) findViewById(R.id.optionsMenu);
-        openOptions = (Button) findViewById(R.id.openOptions);
+        openOptBtn = (Button) findViewById(R.id.openOptions);
+
+        saveOptBtn = (Button) findViewById(R.id.saveOptBtn);
+
+        optionsTitle = (RelativeLayout) findViewById(R.id.optionsTitle);
+        optionsDisplay = (LinearLayout) findViewById(R.id.optionsDisplay);
+        optionsMarker = (LinearLayout) findViewById(R.id.optionsMarker);
+
+        claimParkBtn = (Button) findViewById(R.id.claimParkBtn);
+
+        globLATITUTE = 46.054515;
+        globLONGITUTE = 14.504680;
+        RADIUS = 5000;
 
 
 
@@ -147,8 +180,8 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         try {
             Location location = locationManager.getLastKnownLocation(provider);
             if(location != null) {
-                lat = location.getLatitude();
-                lng = location.getLongitude();
+                globLATITUTE = location.getLatitude();
+                globLONGITUTE = location.getLongitude();
             }
         } catch (SecurityException e) {}
 
@@ -203,7 +236,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 
         //TODO(): unccoment GET_USER
         //Gets Json from server and adds markers on maps after(UserMarker and than ParkingHouses)
-        new GET_USER_SUBBMITED_PARKINGS().execute("https://peaceful-taiga-88033.herokuapp.com/users?lat="+String.valueOf(46.054515)+"&lng="+String.valueOf(14.504680)+"&r=500&");
+        new GET_USER_SUBBMITED_PARKINGS(globLATITUTE,globLONGITUTE,RADIUS).execute();
         new GET_PARKING_HOUSES().execute("https://peaceful-taiga-88033.herokuapp.com/parkings");
 
 
@@ -218,10 +251,16 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
             @Override
             public boolean onMarkerClick(Marker marker) {
 
+
+
                 //Loop through all markers to see witch marker was clicked
                 for(UserMarker userMarker : userMarkersList){
                     //make action on cliced marker
                     if(userMarker.getMarker().getId().compareTo(marker.getId()) == 0){
+
+                        markerInFocus = marker;
+                        claimParkBtn.setVisibility(View.VISIBLE);
+
                         //First check if marker already has active circle if not make one (if circles were added over each other they wouldn't be transperant)
                         if(!userMarker.isCircle()) {
 
@@ -246,6 +285,8 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 
                             return true; // to hide the infoWindow
                         }
+                    }else{
+                        claimParkBtn.setVisibility(View.GONE);
                     }
                 }
 
@@ -258,6 +299,9 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         this.googleMap.setOnMapClickListener(new GoogleMap.OnMapClickListener() {
             @Override
             public void onMapClick(LatLng latLng) {
+
+                claimParkBtn.setVisibility(View.GONE);
+
                 //TODO(optimization): lahko bi meu posebi shranjnene circles v list pa sam une v list zbrisu
                 //remove all infoWindows
                 for(UserMarker parkingMarker : userMarkersList){
@@ -282,30 +326,6 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
             }
         });
 
-        //TODO(): Check if user is close enough to the marker to delete(to acually take the parking spot)
-        //If infoWinow above marker is clicked, delete this maerker/parking spot
-        this.googleMap.setOnInfoWindowClickListener(new GoogleMap.OnInfoWindowClickListener() {
-            @Override
-            public void onInfoWindowClick(Marker marker) {
-
-                //cant delete marker mid for loop so i store it in here for deleting later
-                UserMarker parkingMarkerToRemove = null;
-                //Loop through all the marker to see witchs infowindow was clicked
-                for(UserMarker parkingMarker : userMarkersList){
-                    //when marker whos window was clicked is found delete the maerker, circle, parking spot
-                    if(parkingMarker.getMarker().getId().compareTo(marker.getId()) == 0){
-
-                        marker.remove();
-                        parkingMarker.removePrecisionCircle();
-                        //TODO(): add function to remove free spot from database
-
-                        parkingMarkerToRemove = parkingMarker;//store the marker to delete it from the list later
-                    }
-
-                }
-                userMarkersList.remove(parkingMarkerToRemove);
-            }
-        });
 
 
 
@@ -317,14 +337,15 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         UPDATE_MARKERS_COLOR = new Handler(); //to be handle thread events
         UPDATE_MARKERS_COLOR.postDelayed(UI_UPDTAE_RUNNABLE, 5000);//This is like a clock triger event that runs on a UI(main) thread
 
+        CHECK_FOR_SERVER_UPDATES = new Handler();
+        CHECK_FOR_SERVER_UPDATES.postDelayed(GET_DATA_FROM_SERVER,60000);
+
     }
 
 
 
     @Override
     public void onLocationChanged(Location location) {
-
-
 
     }
 
@@ -369,26 +390,26 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 
             UserMarker tempMarker;
             ArrayList<UserMarker> toDelete = new ArrayList<>();
-
+            //add any new markers
             for(UserMarker marker : userMarkersList){
-
-
 
                 tempMarker =  updatUserMarkerIconColor(marker);
                 if(tempMarker != null){
                     toDelete.add(tempMarker);
                 }
             }
-
+            //delete markers that are older than 10min
             for(UserMarker deleteMarker : toDelete){
                 userMarkersList.remove(deleteMarker);
             }
 
-            //TODO(): update for other type of markers as well
 
+            //call the function agaon after 5seconds
             UPDATE_MARKERS_COLOR.postDelayed(UI_UPDTAE_RUNNABLE, 5000);
         }
     };
+
+
 
 
 
@@ -396,6 +417,27 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 
 
 
+    Runnable GET_DATA_FROM_SERVER = new Runnable() {
+
+        @Override
+        public void run() {
+
+
+            new GET_USER_SUBBMITED_PARKINGS(globLATITUTE,globLONGITUTE,RADIUS).execute();
+            new GET_PARKING_HOUSES().execute("https://peaceful-taiga-88033.herokuapp.com/parkings");
+
+
+
+
+            //update number of spaces on Parkig House marker icon
+            for(ParkingHouseMarker parkingHouseMarker : parkingMarkersList){
+                parkingHouseMarker.getMarker().setIcon(parkerMarkerIconMaker.getNewIcon(parkingHouseMarker.getNumberOfSpaces()));
+            }
+
+
+            CHECK_FOR_SERVER_UPDATES.postDelayed(GET_DATA_FROM_SERVER, 60000);
+        }
+    };
 
 
 
@@ -405,6 +447,18 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 
     //Class k iz podanega linka dobi JSON file iz serverja in v String zapiše podatke ki jih vrne server
     private class GET_USER_SUBBMITED_PARKINGS extends AsyncTask<String, String, String> {
+
+        double latitute;
+        double longitute;
+        float radius;
+
+        GET_USER_SUBBMITED_PARKINGS(double latitute, double longitute, float radius){
+
+            this.latitute = latitute;
+            this.longitute = longitute;
+            this.radius = radius;
+
+        }
 
         protected void onPreExecute() {
             super.onPreExecute();
@@ -419,7 +473,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
             BufferedReader reader = null;
 
             try {
-                URL url = new URL(params[0]);
+                URL url = new URL("https://peaceful-taiga-88033.herokuapp.com/users?globLATITUTE="+String.valueOf(latitute)+"&globLONGITUTE="+String.valueOf(longitute)+"&r="+String.valueOf(radius)+"&");
                 connection = (HttpURLConnection) url.openConnection();
                 connection.connect();
 
@@ -438,13 +492,9 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
                 return buffer.toString();
 
 
-            } catch (MalformedURLException e) {
-                e.printStackTrace();
-                Log.w("USERS ERROR", e.toString());
-            } catch (IOException e) {
-                e.printStackTrace();
-                Log.w("USERS ERROR", e.toString());
-            } finally {
+            } catch (MalformedURLException e) { e.printStackTrace();} catch (IOException e) {e.printStackTrace();}
+
+            finally {
                 if (connection != null) {
                     connection.disconnect();
                 }
@@ -452,10 +502,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
                     if (reader != null) {
                         reader.close();
                     }
-                } catch (IOException e) {
-                    e.printStackTrace();
-                    Log.w("USERS ERROR", e.toString());
-                }
+                } catch (IOException e) {  e.printStackTrace();}
             }
             return null;
         }
@@ -477,22 +524,25 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
                     String innerArray = tempArray.getString(i);//ker je Json sestavljen iz arrayey morm dobit usak array posevi kot string
 
                     Type type = new TypeToken<Map<String, String>>(){}.getType(); //DA lagko pol v Map podam keksn tip je ker item
-                    Map<String, String> myMap = gson.fromJson(innerArray, type); //Key-Value map k lagk pol vn uzamem lat, lng, time
+                    Map<String, String> myMap = gson.fromJson(innerArray, type); //Key-Value map k lagk pol vn uzamem globLATITUTE, globLONGITUTE, time
 
 
-                    double tempLat = Double.parseDouble(myMap.get("lat")); // najdem lat in za tem uzamem stevki in jih spremenim v double
-                    double tempLng = Double.parseDouble(myMap.get("lng")); // najdem lng in za tem uzamem stevki in jih spremenim v double
+                    double tempLat = Double.parseDouble(myMap.get("lat")); // najdem globLATITUTE in za tem uzamem stevki in jih spremenim v double
+                    double tempLng = Double.parseDouble(myMap.get("lng")); // najdem globLONGITUTE in za tem uzamem stevki in jih spremenim v double
                     float tempTime = Float.parseFloat(myMap.get("time"));
                     String tempName = myMap.get("id");
 
-                    //TODO(Tim): add precision of marker
-                    addUserMarker(tempName, tempLat,tempLng, tempTime, 10f);
+
+                    if((System.currentTimeMillis() - tempTime)*(0.001) < 600){
+                        //TODO(Tim): add precision of marker
+                        addUserMarker(tempName, tempLat,tempLng, tempTime, 10f);
+                    }
+
+
+
 
                 }
 
-                //TODO():Implement user location
-                //moves camera to User Location
-                googleMap.moveCamera(CameraUpdateFactory.newLatLngZoom(new LatLng(46.054515, 14.504680), 15));
 
                 //TODO(): uncomment
                 //I can not run get user markers and parking houses at the same time because one Locks googleMap and the other cand add markers at that time
@@ -531,7 +581,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
             this.locationPrecision = String.valueOf(locationPrecision);
             this.timeOfCreation = timeOfCreation;
 
-            Log.d("POST STARTED", "");
+
         }
 
         @Override
@@ -545,11 +595,11 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 
             String resultToDisplay = "";
 
-            Log.d("POST MID", "");
+
             resultToDisplay = postNewParkingSpotToServer(latitute, longitute, locationPrecision);
 
             id = resultToDisplay;
-            Log.d("Server Response", id);
+
 
             return resultToDisplay;
 
@@ -560,13 +610,6 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 
         @Override
         protected void onPostExecute(String result) {
-            Log.d("Post Request:", result);
-
-            if(result != "Mitja error"){
-
-            }
-
-            Log.d("POST END", "");
 
             addUserMarker(id, Double.parseDouble(latitute), Double.parseDouble(longitute), timeOfCreation, Float.parseFloat(locationPrecision));
 
@@ -588,7 +631,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 
             HttpURLConnection connection = (HttpURLConnection)url.openConnection();
 
-            String urlParameter = "lat="+latitute+"&lng="+longitute+"&";
+            String urlParameter = "lat="+latitute+"&lng="+longitute+"&"+0X0D+0X0A;
 
             connection.setRequestMethod("POST");
 
@@ -621,17 +664,16 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
             }
             br.close();
 
-            output += System.getProperty("line.seperator")+ reponseOutput.toString();
 
-            result = output;
+            String tempResponse = String.valueOf(reponseOutput);
+            tempResponse = tempResponse.substring(6,tempResponse.length()-2);
+            Log.e("POST resposne", tempResponse);
+
+            result = tempResponse;
 
 
 
-        } catch (MalformedURLException e) {
-            e.printStackTrace();
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
+        } catch (MalformedURLException e) {e.printStackTrace();} catch (IOException e) {e.printStackTrace();}
 
         return result;
 
@@ -640,6 +682,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 
 
     /**********************************************************END*******************************************************************/
+
 
 
 
@@ -672,14 +715,10 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 
                 return buffer.toString();
 
+            } catch (MalformedURLException e) {e.printStackTrace();   } catch (IOException e) {e.printStackTrace(); }
 
-            } catch (MalformedURLException e) {
-                e.printStackTrace();
-                Log.w("HOUSES ERROR", e.toString());
-            } catch (IOException e) {
-                e.printStackTrace();
-                Log.w("HOUSES ERROR", e.toString());
-            } finally {
+
+            finally {
                 if (connection != null) {
                     connection.disconnect();
                 }
@@ -687,10 +726,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
                     if (reader != null) {
                         reader.close();
                     }
-                } catch (IOException e) {
-                    e.printStackTrace();
-                    Log.w("HOUSES ERROR", e.toString());
-                }
+                } catch (IOException e) { e.printStackTrace(); }
             }
             return null;
         }
@@ -711,7 +747,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
                     String innerArray = tempArray.getString(i);//ker je Json sestavljen iz arrayey morm dobit usak array posevi kot string
 
                     Type type = new TypeToken<Map<String, String>>(){}.getType(); //DA lagko pol v Map podam keksn tip je ker item
-                    Map<String, String> myMap = gson.fromJson(innerArray, type); //Key-Value map k lagk pol vn uzamem lat, lng, time
+                    Map<String, String> myMap = gson.fromJson(innerArray, type); //Key-Value map k lagk pol vn uzamem globLATITUTE, globLONGITUTE, time
 
                     //TODO(): get parking houses names
 
@@ -720,18 +756,11 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
                     int tempNumSpaces = Integer.parseInt(myMap.get("available"));
                     String tempName = myMap.get("name");
 
-                    Log.d("TEST",tempName);
-
 
                     //TODO(Tim): add precision of marker
                     addParkingHouse(tempName, tempLat,tempLng, tempNumSpaces);
 
                 }
-
-                //TODO():Implement user location
-                //moves camera to User Location
-                googleMap.moveCamera(CameraUpdateFactory.newLatLngZoom(new LatLng(46.054515, 14.504680), 15));
-
 
 
             } catch (JSONException | NullPointerException e) {e.printStackTrace();}
@@ -743,6 +772,65 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 
 
     /***********************************************************END*****************************************************************/
+
+
+
+
+
+    /*******************************************GET DATA FROM SERVER CODE + ADD MARKERS FOR RECIVED LOCATIONS*********************************************************/
+
+    //Class k iz podanega linka dobi JSON file iz serverja in v String zapiše podatke ki jih vrne server
+    private class DELETE_USERS_ID extends AsyncTask<String, String, String> {
+
+        String id;
+
+        DELETE_USERS_ID(String id){
+            Log.e("DELETE","Construktor");
+            this.id = id;
+        }
+
+        protected void onPreExecute() {
+            super.onPreExecute();
+
+
+        }
+
+        protected String doInBackground(String... params) {
+
+            Log.e("DELETE","Do in the back");
+
+            try {
+
+
+                URL url = new URL("https://peaceful-taiga-88033.herokuapp.com/users/"+id);
+                HttpURLConnection connection = (HttpURLConnection) url.openConnection();
+                connection.setRequestMethod("DELETE");
+                int responseCode = connection.getResponseCode();
+
+                Log.e("DELETE", String.valueOf(responseCode));
+
+
+
+            } catch (MalformedURLException e) {    e.printStackTrace(); } catch (ProtocolException e) {     e.printStackTrace();} catch (IOException e) {    e.printStackTrace();}
+
+
+            return null;
+        }
+
+        @Override
+        protected void onPostExecute(String result) {
+            super.onPostExecute(result);
+
+
+        }
+
+
+    }
+
+    /**************************************************************END******************************************************/
+
+
+
 
     //TODO(): add precision
     //Function to add a marker on maps
@@ -805,6 +893,9 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         for(ParkingHouseMarker parkingHouseMarker : parkingMarkersList){
             //TODO(): change comparison to some other id not name(2 parking houses could have the sam name)
             if(parkingHouseMarker.getDatabaseID().compareTo(name) == 0){
+
+                parkingHouseMarker.setNumberOfSpaces(numSpaces);
+
                 return;
             }
         }
@@ -825,17 +916,6 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 
     public void claimParking(View view){
 
-    }
-
-    public void onOptions(View view){
-        if(optionsMenu.getVisibility() == View.GONE) {
-            openOptions.startAnimation(gearAnim);
-            optionsMenu.setVisibility(View.VISIBLE);
-            optionsMenu.startAnimation(slideInAnim);
-        }else{
-            optionsMenu.startAnimation(slideOutAnim);
-            optionsMenu.setVisibility(View.GONE);
-        }
     }
 
 
@@ -891,6 +971,61 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 
 
     }
+
+
+    ////////////////////////////////////////////////BUTTON CLICKS//////////////////////////////////////////////////
+
+    public void onOpenOpt(View view){
+
+        openOptBtn.startAnimation(gearAnimOut);
+        openOptBtn.setVisibility(View.GONE);
+
+        optionsMenu.setVisibility(View.VISIBLE);
+
+        optionsTitle.startAnimation(slideInAnim1);
+        optionsDisplay.startAnimation(slideInAnim2);
+        optionsMarker.startAnimation(slideInAnim3);
+        saveOptBtn.startAnimation(slideInAnim4);
+
+    }
+
+
+    public void onCloseOpt(View v){
+
+        optionsMenu.setVisibility(View.GONE);
+
+        openOptBtn.setVisibility(View.VISIBLE);
+        openOptBtn.startAnimation(gearAnimIn);
+
+    }
+
+    public void onClaimParking(View v){
+
+        //cant delete marker mid for loop so i store it in here for deleting later
+        UserMarker parkingMarkerToRemove = null;
+        //Loop through all the marker to see witchs infowindow was clicked
+        for(UserMarker parkingMarker : userMarkersList){
+            //when marker whos window was clicked is found delete the maerker, circle, parking spot
+            if(parkingMarker.getMarker().getId().compareTo(markerInFocus.getId()) == 0){
+
+                new DELETE_USERS_ID(parkingMarker.getDatabaseID()).execute();
+
+                markerInFocus.remove();
+                parkingMarker.removePrecisionCircle();
+                //TODO(): add function to remove free spot from database
+
+                parkingMarkerToRemove = parkingMarker;//store the marker to delete it from the list later
+            }
+
+        }
+        userMarkersList.remove(parkingMarkerToRemove);
+
+        claimParkBtn.setVisibility(View.GONE);
+
+    }
+
+
+    ////////////////////////////////////////////////////END///////////////////////////////////////////////////////////
 
 
 

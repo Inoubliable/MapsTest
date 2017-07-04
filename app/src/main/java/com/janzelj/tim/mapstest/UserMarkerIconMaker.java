@@ -84,6 +84,10 @@ class UserMarkerIconMaker{
 
         int i = calculateAgeCount(age);
 
+        if(i < 0){
+            i = 0;
+            Log.e("AGE IS LESS THAN ", "0");
+        }
 
         canvas.drawCircle(iconSize/2,iconSize/2,iconSize/2,redPaint);
         while (i < pathArrayList.size()){
@@ -159,6 +163,4 @@ class UserMarkerIconMaker{
 
     }
 
-
-        //LALALALA
 }

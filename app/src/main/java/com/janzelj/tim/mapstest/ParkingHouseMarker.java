@@ -46,4 +46,12 @@ public class ParkingHouseMarker {
     Marker getMarker() {
         return marker;
     }
+
+    void setNumberOfSpaces(int numberOfSpaces){
+        this.numberOfSpaces = numberOfSpaces;
+    }
+
+    int getNumberOfSpaces() {
+        return numberOfSpaces;
+    }
 }

@@ -133,7 +133,6 @@ class UserMarker {
     }
 
     double getAge() {
-        Log.d("MarkerAge", ""+calculateMarkerAge()/60);
         return calculateMarkerAge();
     }
 
