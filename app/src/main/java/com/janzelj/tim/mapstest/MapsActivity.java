@@ -423,6 +423,8 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         public void run() {
 
 
+            Log.e("GOT NEW DATA","HUJAA");
+
             new GET_USER_SUBBMITED_PARKINGS(globLATITUTE,globLONGITUTE,RADIUS).execute();
             new GET_PARKING_HOUSES().execute("https://peaceful-taiga-88033.herokuapp.com/parkings");
 
@@ -634,6 +636,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
             String urlParameter = "lat="+latitute+"&lng="+longitute+"&"+0X0D+0X0A;
 
             connection.setRequestMethod("POST");
+            double time = System.currentTimeMillis();
 
             connection.setDoOutput(true);
 
@@ -666,8 +669,9 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 
 
             String tempResponse = String.valueOf(reponseOutput);
-            tempResponse = tempResponse.substring(6,tempResponse.length()-2);
-            Log.e("POST resposne", tempResponse);
+            tempResponse = tempResponse.substring(7,tempResponse.length()-2);
+            Log.e("POST resposne", tempResponse+" "+String.valueOf(time));
+
 
             result = tempResponse;
 

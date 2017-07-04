@@ -86,7 +86,6 @@ class UserMarkerIconMaker{
 
         if(i < 0){
             i = 0;
-            Log.e("AGE IS LESS THAN ", "0");
         }
 
         canvas.drawCircle(iconSize/2,iconSize/2,iconSize/2,redPaint);
@@ -102,6 +101,9 @@ class UserMarkerIconMaker{
     private int calculateAgeCount(double age){
 
         //TODO(): calulate kazalec related to time
+        if(age < 0){
+            Log.e("AGE IS LESS THAN ", String.valueOf(age));
+        }
 
         if(age < 600){ //if age less than 10 min
             return (int) (age/5);
