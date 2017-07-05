@@ -19,8 +19,10 @@ import android.view.animation.AnimationUtils;
 import android.view.animation.Interpolator;
 import android.view.animation.LinearInterpolator;
 import android.widget.Button;
+import android.widget.CheckBox;
 import android.widget.LinearLayout;
 import android.widget.RelativeLayout;
+import android.widget.SeekBar;
 import android.widget.Toast;
 
 import com.google.android.gms.maps.CameraUpdateFactory;
@@ -86,6 +88,11 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 
     Button claimParkBtn;
 
+    CheckBox userCheck;
+    CheckBox parkingCheck;
+    SeekBar distanceSeek;
+    SeekBar ageSeek;
+
 
 
     private GoogleMap googleMap;
@@ -94,7 +101,10 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
     String provider;
     double globLATITUTE;
     double globLONGITUTE;
-    float RADIUS;
+    float MAX_RADIUS;
+    boolean SHOW_USER;
+    boolean SHOW_PARKING;
+    float MAX_AGE;
 
 
     ArrayList<UserMarker> userMarkersList;//stores ParkingMarkers for updating the oppacity of markers
@@ -157,10 +167,16 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 
         claimParkBtn = (Button) findViewById(R.id.claimParkBtn);
 
-        globLATITUTE = 46.054515;
-        globLONGITUTE = 14.504680;
-        RADIUS = 5000;
+        userCheck = (CheckBox) findViewById(R.id.userCheck);
+        parkingCheck = (CheckBox) findViewById(R.id.parkingCheck);
+        distanceSeek = (SeekBar) findViewById(R.id.distanceSeek);
+        ageSeek = (SeekBar) findViewById(R.id.ageSeek);
 
+        //TODO(): load from shared and set options;
+
+
+
+        updateGlobalVariables();
 
 
         userMarkersList = new ArrayList<>(); //sotres ParkingMarkers for updating the oppacity of markers
@@ -236,9 +252,12 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 
         //TODO(): unccoment GET_USER
         //Gets Json from server and adds markers on maps after(UserMarker and than ParkingHouses)
-        new GET_USER_SUBBMITED_PARKINGS(globLATITUTE,globLONGITUTE,RADIUS).execute();
-        new GET_PARKING_HOUSES().execute("https://peaceful-taiga-88033.herokuapp.com/parkings");
-
+        if(SHOW_USER) {
+            new GET_USER_SUBBMITED_PARKINGS(globLATITUTE, globLONGITUTE, MAX_RADIUS).execute();
+        }
+        if(SHOW_PARKING) {
+            new GET_PARKING_HOUSES().execute();
+        }
 
 
         final MarkerOptions thankYouOpt = new MarkerOptions().visible(false).position(new LatLng(0,0)).icon(BitmapDescriptorFactory.fromResource(R.drawable.thank_you_icon));
@@ -425,8 +444,12 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 
             Log.e("GOT NEW DATA","HUJAA");
 
-            new GET_USER_SUBBMITED_PARKINGS(globLATITUTE,globLONGITUTE,RADIUS).execute();
-            new GET_PARKING_HOUSES().execute("https://peaceful-taiga-88033.herokuapp.com/parkings");
+            if(SHOW_USER) {
+                new GET_USER_SUBBMITED_PARKINGS(globLATITUTE, globLONGITUTE, MAX_RADIUS).execute();
+            }
+            if(SHOW_PARKING) {
+                new GET_PARKING_HOUSES().execute();
+            }
 
 
 
@@ -462,51 +485,43 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 
         }
 
-        protected void onPreExecute() {
-            super.onPreExecute();
-
-
-        }
-
         protected String doInBackground(String... params) {
-
 
             HttpURLConnection connection = null;
             BufferedReader reader = null;
+            StringBuilder buffer = new StringBuilder();
 
-            try {
-                URL url = new URL("https://peaceful-taiga-88033.herokuapp.com/users?globLATITUTE="+String.valueOf(latitute)+"&globLONGITUTE="+String.valueOf(longitute)+"&r="+String.valueOf(radius)+"&");
-                connection = (HttpURLConnection) url.openConnection();
-                connection.connect();
-
-
-                InputStream stream = connection.getInputStream();
-
-                reader = new BufferedReader(new InputStreamReader(stream));
-
-                StringBuffer buffer = new StringBuffer();
-                String line = "";
-
-                while ((line = reader.readLine()) != null) {
-                    buffer.append(line+"\n");
-                }
-
-                return buffer.toString();
-
-
-            } catch (MalformedURLException e) { e.printStackTrace();} catch (IOException e) {e.printStackTrace();}
-
-            finally {
-                if (connection != null) {
-                    connection.disconnect();
-                }
+            //loop until connection succeds
+            while (true) {
                 try {
-                    if (reader != null) {
-                        reader.close();
+                    URL url = new URL("https://peaceful-taiga-88033.herokuapp.com/users?globLATITUTE=" + String.valueOf(latitute) + "&globLONGITUTE=" + String.valueOf(longitute) + "&r=" + String.valueOf(radius) + "&");
+                    connection = (HttpURLConnection) url.openConnection();
+                    connection.connect();
+
+                    InputStream stream = connection.getInputStream();
+
+                    reader = new BufferedReader(new InputStreamReader(stream));
+
+                    String line = "";
+
+                    while ((line = reader.readLine()) != null) {
+                        buffer.append(line).append("\n");
                     }
-                } catch (IOException e) {  e.printStackTrace();}
+
+                    connection.disconnect();
+
+                    reader.close();
+
+                    break;//connection succeeded brek out of the loop
+
+
+                } catch (IOException e) {
+                    e.printStackTrace();
+                    continue; //connection failed retry
+                }
             }
-            return null;
+
+            return buffer.toString();
         }
 
         @Override
@@ -535,16 +550,13 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
                     String tempName = myMap.get("id");
 
 
-                    if((System.currentTimeMillis() - tempTime)*(0.001) < 600){
+
+                    if((System.currentTimeMillis() - tempTime)*(0.001) < MAX_AGE*60){
                         //TODO(Tim): add precision of marker
                         addUserMarker(tempName, tempLat,tempLng, tempTime, 10f);
                     }
 
-
-
-
                 }
-
 
                 //TODO(): uncomment
                 //I can not run get user markers and parking houses at the same time because one Locks googleMap and the other cand add markers at that time
@@ -587,28 +599,16 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         }
 
         @Override
-        protected void onPreExecute() {
-            super.onPreExecute();
-        }
-
-
-        @Override
         protected String doInBackground(String... params) {
 
             String resultToDisplay = "";
-
 
             resultToDisplay = postNewParkingSpotToServer(latitute, longitute, locationPrecision);
 
             id = resultToDisplay;
 
-
             return resultToDisplay;
-
-
-
         }
-
 
         @Override
         protected void onPostExecute(String result) {
@@ -626,58 +626,66 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 
         String result = "Mitja error";
 
-        try {
+        //loops untily connection was successfull
+        while(true) {
+            try {
 
-            URL url = new URL("https://peaceful-taiga-88033.herokuapp.com/login");
+                URL url = new URL("https://peaceful-taiga-88033.herokuapp.com/login");
 
 
-            HttpURLConnection connection = (HttpURLConnection)url.openConnection();
+                HttpURLConnection connection = (HttpURLConnection) url.openConnection();
 
-            String urlParameter = "lat="+latitute+"&lng="+longitute+"&"+0X0D+0X0A;
+                String urlParameter = "lat=" + latitute + "&lng=" + longitute + "&" + 0X0D + 0X0A;
 
-            connection.setRequestMethod("POST");
-            double time = System.currentTimeMillis();
+                connection.setRequestMethod("POST");
+                double time = System.currentTimeMillis();
 
-            connection.setDoOutput(true);
+                connection.setDoOutput(true);
 
-            DataOutputStream dStream = new DataOutputStream(connection.getOutputStream());
+                DataOutputStream dStream = new DataOutputStream(connection.getOutputStream());
 
-            dStream.writeBytes(urlParameter);
-            dStream.flush();
-            dStream.close();
+                dStream.writeBytes(urlParameter);
+                dStream.flush();
+                dStream.close();
 
-            int responseCode = connection.getResponseCode();
+                int responseCode = connection.getResponseCode();
 
-            if (responseCode != HttpURLConnection.HTTP_OK)
-                Log.d("Mitja ERROR", String.valueOf(responseCode));
-            else
-                Log.d("Mitja WORKS", String.valueOf(responseCode));
+                if (responseCode != HttpURLConnection.HTTP_OK)
+                    Log.d("Mitja ERROR", String.valueOf(responseCode));
+                else
+                    Log.d("Mitja WORKS", String.valueOf(responseCode));
 
-            String output = "Request URl "+ url;
-            output += System.getProperty("line.seperator")+"Request Parameters "+ urlParameter;
-            output += System.getProperty("line.seperator")+"Request Response Code "+ responseCode;
+                String output = "Request URl " + url;
+                output += System.getProperty("line.seperator") + "Request Parameters " + urlParameter;
+                output += System.getProperty("line.seperator") + "Request Response Code " + responseCode;
 
-            BufferedReader br = new BufferedReader(new InputStreamReader(connection.getInputStream()));
+                BufferedReader br = new BufferedReader(new InputStreamReader(connection.getInputStream()));
 
-            String line = "";
-            StringBuilder reponseOutput = new StringBuilder();
+                String line = "";
+                StringBuilder reponseOutput = new StringBuilder();
 
-            while ((line = br.readLine()) != null){
-                reponseOutput.append(line);
+                while ((line = br.readLine()) != null) {
+                    reponseOutput.append(line);
+                }
+                br.close();
+
+
+                String tempResponse = String.valueOf(reponseOutput);
+                tempResponse = tempResponse.substring(7, tempResponse.length() - 2);
+                Log.e("POST resposne", tempResponse + " " + String.valueOf(time));
+
+
+                result = tempResponse;
+
+                break;//connection was succeesfull break out of the loop
+
+
+            } catch (IOException e) {
+                e.printStackTrace();
+                continue;//connecrion failed retry
             }
-            br.close();
 
-
-            String tempResponse = String.valueOf(reponseOutput);
-            tempResponse = tempResponse.substring(7,tempResponse.length()-2);
-            Log.e("POST resposne", tempResponse+" "+String.valueOf(time));
-
-
-            result = tempResponse;
-
-
-
-        } catch (MalformedURLException e) {e.printStackTrace();} catch (IOException e) {e.printStackTrace();}
+        }
 
         return result;
 
@@ -699,40 +707,37 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 
             HttpURLConnection connection = null;
             BufferedReader reader = null;
+            StringBuilder buffer = new StringBuilder();
 
-            try {
-                URL url = new URL(params[0]);
-                connection = (HttpURLConnection) url.openConnection();
-                connection.connect();
-
-
-                InputStream stream = connection.getInputStream();
-
-                reader = new BufferedReader(new InputStreamReader(stream));
-
-                StringBuffer buffer = new StringBuffer();
-                String line = "";
-
-                while ((line = reader.readLine()) != null) {
-                    buffer.append(line+"\n");
-                }
-
-                return buffer.toString();
-
-            } catch (MalformedURLException e) {e.printStackTrace();   } catch (IOException e) {e.printStackTrace(); }
-
-
-            finally {
-                if (connection != null) {
-                    connection.disconnect();
-                }
+            //If it fails to connect retry until it succeeds
+            while (true) {
                 try {
-                    if (reader != null) {
-                        reader.close();
+                    URL url = new URL("https://peaceful-taiga-88033.herokuapp.com/parkings");
+                    connection = (HttpURLConnection) url.openConnection();
+                    connection.connect();
+
+                    InputStream stream = connection.getInputStream();
+
+                    reader = new BufferedReader(new InputStreamReader(stream));
+
+                    String line = "";
+
+                    while ((line = reader.readLine()) != null) {
+                        buffer.append(line).append("\n");
                     }
-                } catch (IOException e) { e.printStackTrace(); }
+
+                    connection.disconnect();
+
+                    reader.close();
+
+                    break;//connection was succeesfull break out of the loop
+
+                } catch (IOException e) {
+                    e.printStackTrace();
+                    continue;//connection failed retry
+                }
             }
-            return null;
+            return buffer.toString();//pass recived data to onPostExecute()
         }
 
         @Override
@@ -741,12 +746,9 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 
             Gson gson = new Gson();//a external libery object for reading HTTP JSON responses
 
-
             try {
                 JSONArray tempArray = new JSONArray(result);//Paharsa string Json v Json array
                 for(int i=0; i<tempArray.length();i+=1){
-
-
 
                     String innerArray = tempArray.getString(i);//ker je Json sestavljen iz arrayey morm dobit usak array posevi kot string
 
@@ -789,45 +791,31 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         String id;
 
         DELETE_USERS_ID(String id){
-            Log.e("DELETE","Construktor");
             this.id = id;
         }
 
-        protected void onPreExecute() {
-            super.onPreExecute();
-
-
-        }
 
         protected String doInBackground(String... params) {
 
-            Log.e("DELETE","Do in the back");
+            //If it fails to connect retry until it succeeds
+            while (true) {
+                try {
 
-            try {
+                    URL url = new URL("https://peaceful-taiga-88033.herokuapp.com/users/" + id);
+                    HttpURLConnection connection = (HttpURLConnection) url.openConnection();
+                    connection.setRequestMethod("DELETE");
+                    int responseCode = connection.getResponseCode();
 
+                    break;//connection was succeesfull break out of the loop
 
-                URL url = new URL("https://peaceful-taiga-88033.herokuapp.com/users/"+id);
-                HttpURLConnection connection = (HttpURLConnection) url.openConnection();
-                connection.setRequestMethod("DELETE");
-                int responseCode = connection.getResponseCode();
-
-                Log.e("DELETE", String.valueOf(responseCode));
-
-
-
-            } catch (MalformedURLException e) {    e.printStackTrace(); } catch (ProtocolException e) {     e.printStackTrace();} catch (IOException e) {    e.printStackTrace();}
-
+                } catch (IOException e) {
+                    e.printStackTrace();
+                    continue;//connection failed retry
+                }
+            }
 
             return null;
         }
-
-        @Override
-        protected void onPostExecute(String result) {
-            super.onPostExecute(result);
-
-
-        }
-
 
     }
 
@@ -878,7 +866,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
     private UserMarker updatUserMarkerIconColor(UserMarker marker){
 
         marker.updateMarkerAge();
-        if(marker.getAge() > 600){
+        if(marker.getAge() > MAX_AGE*60){
             marker.getMarker().remove();
             return marker;
         }else{
@@ -1030,6 +1018,59 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 
 
     ////////////////////////////////////////////////////END///////////////////////////////////////////////////////////
+
+
+
+    public void onSaveOptions(View v){
+
+
+        updateGlobalVariables();
+
+        for(UserMarker marker : userMarkersList){
+
+            marker.getMarker().remove();
+
+        }
+        userMarkersList.clear();
+
+
+        for(ParkingHouseMarker marker : parkingMarkersList){
+
+            marker.getMarker().remove();
+
+        }
+        parkingMarkersList.clear();
+
+
+        if(SHOW_USER) {
+            new GET_USER_SUBBMITED_PARKINGS(globLATITUTE, globLONGITUTE, MAX_RADIUS).execute();
+        }
+        if(SHOW_PARKING) {
+            new GET_PARKING_HOUSES().execute();
+        }
+
+        optionsMenu.setVisibility(View.GONE);
+
+        openOptBtn.setVisibility(View.VISIBLE);
+        openOptBtn.startAnimation(gearAnimIn);
+
+    }
+
+
+    private void updateGlobalVariables(){
+
+        //TODO(): to last location
+        globLATITUTE = 46.054515;
+        globLONGITUTE = 14.504680;
+
+        SHOW_USER = userCheck.isChecked();
+        SHOW_PARKING = parkingCheck.isChecked();
+        MAX_RADIUS = distanceSeek.getProgress();
+        MAX_AGE = ageSeek.getProgress();
+
+        Log.e("CHECKS", SHOW_USER+" "+SHOW_PARKING);
+
+    }
 
 
 
