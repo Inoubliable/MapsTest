@@ -23,6 +23,7 @@ import android.widget.CheckBox;
 import android.widget.LinearLayout;
 import android.widget.RelativeLayout;
 import android.widget.SeekBar;
+import android.widget.TextView;
 import android.widget.Toast;
 
 import com.google.android.gms.maps.CameraUpdateFactory;
@@ -92,6 +93,9 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
     CheckBox parkingCheck;
     SeekBar distanceSeek;
     SeekBar ageSeek;
+
+    TextView distanceText;
+    TextView ageText;
 
 
 
@@ -171,6 +175,38 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         parkingCheck = (CheckBox) findViewById(R.id.parkingCheck);
         distanceSeek = (SeekBar) findViewById(R.id.distanceSeek);
         ageSeek = (SeekBar) findViewById(R.id.ageSeek);
+
+        distanceText = (TextView) findViewById(R.id.distanceText);
+        ageText = (TextView) findViewById(R.id.ageText);
+
+        distanceSeek.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
+            @Override
+            public void onProgressChanged(SeekBar seekBar, int i, boolean b) {
+                distanceText.setText(i+"km");
+            }
+            @Override
+            public void onStartTrackingTouch(SeekBar seekBar) {
+
+            }
+            @Override
+            public void onStopTrackingTouch(SeekBar seekBar) {
+
+            }
+        });
+        ageSeek.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
+            @Override
+            public void onProgressChanged(SeekBar seekBar, int i, boolean b) {
+                ageText.setText(i+"min");
+            }
+            @Override
+            public void onStartTrackingTouch(SeekBar seekBar) {
+
+            }
+            @Override
+            public void onStopTrackingTouch(SeekBar seekBar) {
+
+            }
+        });
 
         //TODO(): load from shared and set options;
 
@@ -494,7 +530,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
             //loop until connection succeds
             while (true) {
                 try {
-                    URL url = new URL("https://peaceful-taiga-88033.herokuapp.com/users?globLATITUTE=" + String.valueOf(latitute) + "&globLONGITUTE=" + String.valueOf(longitute) + "&r=" + String.valueOf(radius) + "&");
+                    URL url = new URL("https://peaceful-taiga-88033.herokuapp.com/users?lat=" + String.valueOf(latitute) + "&lng=" + String.valueOf(longitute) + "&r=" + String.valueOf(radius) + "&");
                     connection = (HttpURLConnection) url.openConnection();
                     connection.connect();
 
@@ -1065,7 +1101,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 
         SHOW_USER = userCheck.isChecked();
         SHOW_PARKING = parkingCheck.isChecked();
-        MAX_RADIUS = distanceSeek.getProgress();
+        MAX_RADIUS = distanceSeek.getProgress()/111f;
         MAX_AGE = ageSeek.getProgress();
 
         Log.e("CHECKS", SHOW_USER+" "+SHOW_PARKING);
