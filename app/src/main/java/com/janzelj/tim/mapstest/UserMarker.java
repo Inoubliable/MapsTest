@@ -1,6 +1,7 @@
 package com.janzelj.tim.mapstest;
 
 import android.graphics.Color;
+import android.graphics.Paint;
 import android.graphics.Point;
 import android.os.Handler;
 import android.os.SystemClock;
@@ -49,6 +50,8 @@ class UserMarker {
 
 
 
+
+
     UserMarker(String databaseID, LatLng location, double timeOfCreation, float locationPrecision, GoogleMap map, BitmapDescriptor icon){
 
         this.databaseID = databaseID;
@@ -78,6 +81,7 @@ class UserMarker {
 
 
         alpha = 1f;
+
 
 
     }
@@ -128,7 +132,7 @@ class UserMarker {
     //returnes age in seconds
     private double calculateMarkerAge(){
         //return (float) ((System.currentTimeMillis() - timeOfCreation)*(1.66667*Math.pow(10,-5))); //For minutes
-        return (System.currentTimeMillis() - timeOfCreation)*(0.001); // for seconds
+        return (System.currentTimeMillis() - timeOfCreation)*(0.001d); // for seconds
 
     }
 
@@ -186,4 +190,5 @@ class UserMarker {
     int[] getMarkerColor(){
         return markerColor;
     }
+
 }

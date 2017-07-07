@@ -106,7 +106,7 @@ class UserMarkerIconMaker{
         }
 
         if(age < 600){ //if age less than 10 min
-            return (int) (age/5);
+            return (int) (age/5d);
         }else {
             return 120;
         }

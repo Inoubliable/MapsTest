@@ -42,6 +42,7 @@ import com.google.gson.reflect.TypeToken;
 
 import org.json.JSONArray;
 import org.json.JSONException;
+import org.w3c.dom.Text;
 
 import java.io.BufferedReader;
 import java.io.DataOutputStream;
@@ -70,6 +71,13 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 
 
     /**********************************************GLOBAL VARIABLES****************************************************/
+
+    OpeningAnimation openOverlay;
+    RelativeLayout openingAnimView;
+    private boolean openingAnimRunning;
+
+    TextView loadingUsersText;
+    TextView loadingParkingsText;
 
     Animation slideInAnim1;
     Animation slideInAnim2;
@@ -146,9 +154,22 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         setContentView(R.layout.activity_maps);
 
 
+
+        openOverlay = new OpeningAnimation(this);
+
+        openingAnimView = (RelativeLayout) findViewById(R.id.openingAnim);
+        openingAnimView.addView(openOverlay);
+
+        openingAnimRunning = true;
+
+
+
         // Obtain the SupportMapFragment and get notified when the map is ready to be used.
         SupportMapFragment mapFragment = (SupportMapFragment) getSupportFragmentManager().findFragmentById(R.id.map);
         mapFragment.getMapAsync(this);
+
+        loadingUsersText = (TextView) findViewById(R.id.loadingUsersText);
+        loadingParkingsText = (TextView) findViewById(R.id.loadingParkingsText);
 
 
         // load the animation
@@ -161,7 +182,9 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         gearAnimIn = AnimationUtils.loadAnimation(getApplicationContext(),R.anim.gear_in);
 
         optionsMenu = (LinearLayout) findViewById(R.id.optionsMenu);
+
         openOptBtn = (Button) findViewById(R.id.openOptions);
+        openOptBtn.setVisibility(View.GONE);
 
         saveOptBtn = (Button) findViewById(R.id.saveOptBtn);
 
@@ -519,6 +542,8 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
             this.longitute = longitute;
             this.radius = radius;
 
+            loadingUsersText.setVisibility(View.VISIBLE);
+
         }
 
         protected String doInBackground(String... params) {
@@ -603,6 +628,15 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 
 
             } catch (JSONException | NullPointerException e) {e.printStackTrace();}
+
+            if(openingAnimRunning && !SHOW_PARKING){
+                openOverlay.openApp();
+                openingAnimRunning = false;
+                openOptBtn.setVisibility(View.VISIBLE);
+            }
+
+            loadingUsersText.setVisibility(View.GONE);
+
         }
 
 
@@ -739,6 +773,10 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
     private class GET_PARKING_HOUSES extends AsyncTask<String, String, String> {
 
 
+        GET_PARKING_HOUSES(){
+            loadingParkingsText.setVisibility(View.VISIBLE);
+        }
+
         protected String doInBackground(String... params) {
 
             HttpURLConnection connection = null;
@@ -806,6 +844,15 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 
 
             } catch (JSONException | NullPointerException e) {e.printStackTrace();}
+
+            if(openingAnimRunning){
+                openOverlay.openApp();
+                openingAnimRunning = false;
+                openOptBtn.setVisibility(View.VISIBLE);
+            }
+
+            loadingParkingsText.setVisibility(View.GONE);
+
         }
 
 
