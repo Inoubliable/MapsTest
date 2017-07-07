@@ -304,8 +304,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
     public void onMapReady(GoogleMap googleMap) {
         this.googleMap = googleMap;
 
-        //TODO(): Better loading screan, than just Toast
-        Toast.makeText(this, "Loading Free Parking Spaces", Toast.LENGTH_LONG).show();
+
 
         //TODO(IMPORTNAT): Canot add objects to Map here beacuse it is lockef by a seperate thread JsonTASK()
 
