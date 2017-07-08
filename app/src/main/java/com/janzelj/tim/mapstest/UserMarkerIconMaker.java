@@ -84,6 +84,9 @@ class UserMarkerIconMaker{
 
         int i = calculateAgeCount(age);
 
+        if(i < 0){
+            i = 0;
+        }
 
         canvas.drawCircle(iconSize/2,iconSize/2,iconSize/2,redPaint);
         while (i < pathArrayList.size()){
@@ -91,16 +94,19 @@ class UserMarkerIconMaker{
             i++;
         }
 
-        canvas.drawText("P",iconSize/2,(iconSize/2)+(textSize/2)-3,textPaint);
+        canvas.drawText(ageToDisplayTime(age),iconSize/2,(iconSize/2)+(textSize/2)-3,textPaint);
         return BitmapDescriptorFactory.fromBitmap(bitmap);
     }
 
     private int calculateAgeCount(double age){
 
         //TODO(): calulate kazalec related to time
+        if(age < 0){
+            Log.e("AGE IS LESS THAN ", String.valueOf(age));
+        }
 
         if(age < 600){ //if age less than 10 min
-            return (int) (age/5);
+            return (int) (age/5d);
         }else {
             return 120;
         }
@@ -129,6 +135,16 @@ class UserMarkerIconMaker{
         }
     }
 
+    String ageToDisplayTime(double age){
+
+        if(age < 60){
+            return String.valueOf((Math.round(age)))+"s";
+        }else{
+            return String.valueOf((Math.round(age/60)))+"m";
+        }
+
+    }
+
     private void makePath(){
 
         int i = 0;
@@ -148,7 +164,5 @@ class UserMarkerIconMaker{
         }
 
     }
-
-
 
 }

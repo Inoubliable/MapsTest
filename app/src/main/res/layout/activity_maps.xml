@@ -25,20 +25,22 @@
     android:layout_centerHorizontal="true"
     android:layout_marginBottom="15dp"
     android:text="Claim Parking"
-    android:onClick="claimParking"
-    android:visibility="gone"/>
+    android:onClick="onClaimParking"
+    android:id="@+id/claimParkBtn"
+    android:visibility="gone"
+    android:background="@drawable/options_layout_style"/>
 
 
 
-        <Button
-            android:layout_width="55dp"
-            android:layout_height="55dp"
-            android:background="@drawable/zobato_kolo"
-            android:layout_margin="5dp"
-            android:onClick="onOptions"
-            android:layout_alignParentEnd="true"
-            android:layout_alignParentRight="true"
-            android:id="@+id/openOptions"/>
+<Button
+    android:layout_width="55dp"
+    android:layout_height="55dp"
+    android:background="@drawable/zobato_kolo"
+    android:layout_margin="5dp"
+    android:onClick="onOpenOpt"
+    android:layout_alignParentEnd="true"
+    android:layout_alignParentRight="true"
+    android:id="@+id/openOptions"/>
 
 
 
@@ -56,7 +58,8 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:background="@drawable/options_layout_style"
-        android:layout_marginBottom="1dp">
+        android:layout_marginBottom="1dp"
+        android:id="@+id/optionsTitle">
 
         <TextView
             android:layout_width="wrap_content"
@@ -68,6 +71,15 @@
             android:layout_alignParentStart="true"
             android:layout_alignParentLeft="true" />
 
+        <Button
+            android:layout_height="55dp"
+            android:layout_width="55dp"
+            android:background="@drawable/zobato_kolo"
+            android:layout_alignParentEnd="true"
+            android:layout_alignParentRight="true"
+            android:layout_centerVertical="true"
+            android:onClick="onCloseOpt"/>
+
     </RelativeLayout>
 
 
@@ -76,7 +88,8 @@
         android:layout_height="wrap_content"
         android:background="@drawable/options_layout_style"
         android:orientation="vertical"
-        android:layout_marginBottom="1dp">
+        android:layout_marginBottom="1dp"
+        android:id="@+id/optionsDisplay">
 
 
 
@@ -103,7 +116,9 @@
                     android:text="User Markers"
                     android:layout_marginLeft="10dp"
                     android:layout_marginBottom="10dp"
-                    android:layout_marginRight="10dp"/>
+                    android:layout_marginRight="10dp"
+                    android:id="@+id/userCheck"
+                    android:checked="true"/>
 
                 <CheckBox
                     android:layout_width="wrap_content"
@@ -111,7 +126,9 @@
                     android:text="Parking Houses"
                     android:layout_marginLeft="10dp"
                     android:layout_marginBottom="10dp"
-                    android:layout_marginRight="10dp"/>
+                    android:layout_marginRight="10dp"
+                    android:id="@+id/parkingCheck"
+                    android:checked="true"/>
 
             </LinearLayout>
 
@@ -126,41 +143,87 @@
         android:layout_height="wrap_content"
         android:background="@drawable/options_layout_style"
         android:orientation="vertical"
-        android:layout_marginBottom="1dp">
+        android:layout_marginBottom="1dp"
+        android:id="@+id/optionsMarker">
 
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="Marker Distance:"
-            android:textColor="#004C66"
-            android:textSize="25dp"
-            android:paddingLeft="10dp"
-            android:paddingTop="10dp"
-            android:paddingBottom="0dp"/>
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Marker Distance:"
+                android:textColor="#004C66"
+                android:textSize="25dp"
+                android:paddingLeft="10dp"
+                android:paddingTop="10dp"
+                android:paddingBottom="0dp"/>
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="5km"
+                android:textColor="#004C66"
+                android:textSize="25dp"
+                android:paddingLeft="20dp"
+                android:paddingTop="10dp"
+                android:paddingBottom="0dp"
+                android:id="@+id/distanceText"/>
+
+
+
+        </LinearLayout>
+
+
 
         <SeekBar
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:paddingTop="5dp"
             android:paddingLeft="25dp"
-            android:paddingBottom="25dp"/>
+            android:paddingBottom="25dp"
+            android:progress="5"
+            android:id="@+id/distanceSeek"
+            android:max="111"/>
 
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="Marker Age:"
-            android:textColor="#004C66"
-            android:textSize="25dp"
-            android:paddingLeft="10dp"
-            android:paddingTop="10dp"
-            android:paddingBottom="0dp"/>
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Marker Age:"
+                android:textColor="#004C66"
+                android:textSize="25dp"
+                android:paddingLeft="10dp"
+                android:paddingTop="10dp"
+                android:paddingBottom="0dp"/>
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="10min"
+                android:textColor="#004C66"
+                android:textSize="25dp"
+                android:paddingLeft="20dp"
+                android:paddingTop="10dp"
+                android:paddingBottom="0dp"
+                android:id="@+id/ageText"/>
+
+        </LinearLayout>
 
         <SeekBar
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:paddingTop="5dp"
             android:paddingLeft="25dp"
-            android:paddingBottom="25dp"/>
+            android:paddingBottom="25dp"
+            android:progress="10"
+            android:id="@+id/ageSeek"
+            android:max="20"/>
 
     </LinearLayout>
 
@@ -169,10 +232,50 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:background="@drawable/options_layout_style"
-        android:text="Save Options"
+        android:text="Save and Reload"
         android:textColor="#004C66"
-        android:textSize="15dp"/>
+        android:textSize="15dp"
+        android:onClick="onSaveOptions"
+        android:id="@+id/saveOptBtn"/>
 
 </LinearLayout>
+
+<LinearLayout
+    android:layout_width="wrap_content"
+    android:layout_height="wrap_content"
+    android:layout_alignParentStart="true"
+    android:layout_alignParentLeft="true"
+    android:layout_alignParentTop="true"
+    android:orientation="vertical">
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Loading users..."
+        android:textSize="20dp"
+        android:textColor="@color/colorPrimaryDark"
+        android:id="@+id/loadingUsersText"
+        android:visibility="gone"/>
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Loading parkings..."
+        android:textSize="20dp"
+        android:textColor="@color/colorPrimaryDark"
+        android:id="@+id/loadingParkingsText"
+        android:visibility="gone"/>
+
+</LinearLayout>
+
+
+<RelativeLayout
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:id="@+id/openingAnim">
+
+</RelativeLayout>
+
+
 
 </RelativeLayout>

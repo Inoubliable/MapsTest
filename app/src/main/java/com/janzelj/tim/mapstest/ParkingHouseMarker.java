@@ -39,5 +39,19 @@ public class ParkingHouseMarker {
         marker.setIcon(icon);
     }
 
+    String getDatabaseID() {
+        return databaseID;
+    }
 
+    Marker getMarker() {
+        return marker;
+    }
+
+    void setNumberOfSpaces(int numberOfSpaces){
+        this.numberOfSpaces = numberOfSpaces;
+    }
+
+    int getNumberOfSpaces() {
+        return numberOfSpaces;
+    }
 }

@@ -1,12 +1,22 @@
 package com.janzelj.tim.mapstest;
 
 import android.graphics.Color;
+import android.graphics.Paint;
+import android.graphics.Point;
+import android.os.Handler;
+import android.os.SystemClock;
 import android.util.Log;
+import android.view.animation.Interpolator;
+import android.view.animation.LinearInterpolator;
 
+import com.google.android.gms.maps.GoogleMap;
+import com.google.android.gms.maps.Projection;
+import com.google.android.gms.maps.model.BitmapDescriptor;
 import com.google.android.gms.maps.model.Circle;
 import com.google.android.gms.maps.model.CircleOptions;
 import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.maps.model.Marker;
+import com.google.android.gms.maps.model.MarkerOptions;
 
 import java.text.SimpleDateFormat;
 import java.util.Date;
@@ -34,9 +44,15 @@ class UserMarker {
 
     private Circle locationPrecisionCircle;
 
+    private Circle popInCircle;
+    private float popInCircleRadius;
 
 
-    UserMarker(String databaseID, LatLng location, double timeOfCreation, float locationPrecision, Marker marker){
+
+
+
+
+    UserMarker(String databaseID, LatLng location, double timeOfCreation, float locationPrecision, GoogleMap map, BitmapDescriptor icon){
 
         this.databaseID = databaseID;
         this.location = location;
@@ -47,10 +63,24 @@ class UserMarker {
         this.locationPrecision = locationPrecision;
 
 
-        this.marker = marker;
+        MarkerOptions tempMarkerOpt = new MarkerOptions().position(location)
+                                                        .title("Take Parking")
+                                                        .icon(icon)
+                                                        .anchor(0.5f,0.5f);
+        this.marker = map.addMarker(tempMarkerOpt);
+
+
+
+
+        CircleOptions tempLocationPrecision = new CircleOptions().center(location).radius(locationPrecision).visible(false).fillColor(Color.GREEN);
+        locationPrecisionCircle = map.addCircle(tempLocationPrecision);
+
+        popInCircleRadius = 0;
+        CircleOptions tempPopInCircle = new CircleOptions().center(location).radius(0).fillColor(Color.YELLOW).visible(false).strokeColor(Color.TRANSPARENT);
+        popInCircle = map.addCircle(tempPopInCircle);
+
 
         alpha = 1f;
-
 
 
 
@@ -102,26 +132,52 @@ class UserMarker {
     //returnes age in seconds
     private double calculateMarkerAge(){
         //return (float) ((System.currentTimeMillis() - timeOfCreation)*(1.66667*Math.pow(10,-5))); //For minutes
-        return (System.currentTimeMillis() - timeOfCreation)*(0.001); // for seconds
+        return (System.currentTimeMillis() - timeOfCreation)*(0.001d); // for seconds
 
     }
 
     double getAge() {
-        Log.d("MarkerAge", ""+calculateMarkerAge()/60);
         return calculateMarkerAge();
     }
 
     void animatePopIn(){
 
+        popInCircle.setVisible(true);
+
+        final Handler handler = new Handler();
+
+        handler.post(new Runnable() {
+            @Override
+            public void run() {
+
+
+                popInCircleRadius+=0.6;
+
+                popInCircle.setRadius(popInCircleRadius);
+
+
+                if(popInCircleRadius<60){
+                    // Post again 16ms later.
+                    handler.postDelayed(this, 1);
+                }else{
+
+                    popInCircleRadius = 0;
+                    popInCircle.setRadius(popInCircleRadius);
+                    popInCircle.setVisible(false);
+
+                }
+
+
+
+            }
+        });
     }
 
-    void animateFadeOut(){
-
-    }
 
     void animateTranslate(float lat, float lng){
 
     }
+
 
     Marker getMarker() {
         return marker;
@@ -134,4 +190,5 @@ class UserMarker {
     int[] getMarkerColor(){
         return markerColor;
     }
+
 }
