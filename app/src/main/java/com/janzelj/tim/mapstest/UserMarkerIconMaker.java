@@ -111,8 +111,6 @@ class UserMarkerIconMaker{
             return 120;
         }
 
-
-
     }
 
     private void caclulateVerticies(){
